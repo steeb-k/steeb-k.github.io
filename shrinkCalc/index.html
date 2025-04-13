@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shrinkage Calculator</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Shrinkage Calculator</h1>
+        <a class="help-link" id="helpLink">How to use this tool</a>
+        
+        <div class="input-grid">
+            <div></div>
+            <div>Top</div>
+            <div>Middle</div>
+            <div>Bottom</div>
+            
+            <div class="axis-label">X-Axis</div>
+            <div><input type="number" id="x-top" placeholder="Enter value"></div>
+            <div><input type="number" id="x-middle" placeholder="Enter value"></div>
+            <div><input type="number" id="x-bottom" placeholder="Enter value"></div>
+            
+            <div class="axis-label">Y-Axis</div>
+            <div><input type="number" id="y-top" placeholder="Enter value"></div>
+            <div><input type="number" id="y-middle" placeholder="Enter value"></div>
+            <div><input type="number" id="y-bottom" placeholder="Enter value"></div>
+            
+            <div class="axis-label">Z-Axis</div>
+            <div><input type="number" id="z-top" placeholder="Enter value"></div>
+            <div><input type="number" id="z-middle" placeholder="Enter value"></div>
+            <div><input type="number" id="z-bottom" placeholder="Enter value"></div>
+        </div>
+        
+        <div class="current-shrinkage">
+            <div>
+                <span>Current XY Shrinkage:</span>
+                <input type="number" id="current-xy" value="100" placeholder="Percentage">
+                <span>%</span>
+            </div>
+            <div>
+                <span>Current Z Shrinkage:</span>
+                <input type="number" id="current-z" value="100" placeholder="Percentage">
+                <span>%</span>
+            </div>
+        </div>
+        
+        <button class="calculate-btn" id="calculateBtn">Calculate</button>
+        
+        <div class="results">
+            <div>
+                <h3>XY Shrinkage</h3>
+                <div class="result-value" id="xyResult">-</div>
+            </div>
+            <div>
+                <h3>Z Shrinkage</h3>
+                <div class="result-value" id="zResult">-</div>
+            </div>
+        </div>
+
+        <a class="formula-link" id="formulaLink">How are these results calculated?</a>
+    </div>
+
+    <!-- Formula Overlay -->
+    <div class="formula-overlay" id="formulaOverlay">
+        <div class="formula-content">
+            <button class="close-formula" id="closeFormula">&times;</button>
+            <h2>Calculation Formulas</h2>
+            
+            <div class="formula">
+                <h3>XY Shrinkage</h3>
+                <math xmlns="http://www.w3.org/1998/Math/MathML">
+                    <mtext>XY = </mtext>
+                    <mfrac>
+                        <mrow>
+                            <mo>(</mo>
+                            <mfrac>
+                                <mrow>
+                                    <msub><mi>X</mi><mi>top</mi></msub>
+                                    <mo>+</mo>
+                                    <msub><mi>X</mi><mi>middle</mi></msub>
+                                    <mo>+</mo>
+                                    <msub><mi>X</mi><mi>bottom</mi></msub>
+                                </mrow>
+                                <mn>3</mn>
+                            </mfrac>
+                            <mo>+</mo>
+                            <mfrac>
+                                <mrow>
+                                    <msub><mi>Y</mi><mi>top</mi></msub>
+                                    <mo>+</mo>
+                                    <msub><mi>Y</mi><mi>middle</mi></msub>
+                                    <mo>+</mo>
+                                    <msub><mi>Y</mi><mi>bottom</mi></msub>
+                                </mrow>
+                                <mn>3</mn>
+                            </mfrac>
+                            <mo>)</mo>
+                        </mrow>
+                        <mn>40</mn>
+                    </mfrac>
+                    <mo>×</mo>
+                    <mtext>CurrentXY%</mtext>
+                </math>
+                <p>Where:<br>
+                - X and Y values are averaged separately<br>
+                - The two averages are then averaged together<br>
+                - Divided by 20 (shown as ÷40 in the formula)<br>
+                - Multiplied by your current XY shrinkage percentage</p>
+            </div>
+            
+            <div class="formula">
+                <h3>Z Shrinkage</h3>
+                <math xmlns="http://www.w3.org/1998/Math/MathML">
+                    <mtext>Z = </mtext>
+                    <mfrac>
+                        <mrow>
+                            <msub><mi>Z</mi><mi>top</mi></msub>
+                            <mo>+</mo>
+                            <msub><mi>Z</mi><mi>middle</mi></msub>
+                            <mo>+</mo>
+                            <msub><mi>Z</mi><mi>bottom</mi></msub>
+                        </mrow>
+                        <mn>60</mn>
+                    </mfrac>
+                    <mo>×</mo>
+                    <mtext>CurrentZ%</mtext>
+                </math>
+                <p>Where:<br>
+                - Z values are averaged<br>
+                - Divided by 20 (shown as ÷60 in the formula)<br>
+                - Multiplied by your current Z shrinkage percentage</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help Overlay -->
+    <div class="help-overlay" id="helpOverlay">
+        <div class="help-content">
+            <button class="close-help" id="closeHelp">&times;</button>
+            <h2>How to Use This Tool</h2>
+            <p>Here's a brief guide on using the Shrinkage Calculator:</p>
+            <ol>
+                <li>Enter your measurement values for each axis (X, Y, Z) across the three positions (Top, Middle, Bottom)</li>
+                <li>Set your current shrinkage percentages (default is 100%)</li>
+                <li>Click the "Calculate" button to process the data</li>
+                <li>View your adjusted XY Shrinkage and Z Shrinkage results</li>
+                <li>The calculator averages each axis across positions and divides by 20</li>
+                <li>Results are then adjusted by your current shrinkage percentages</li>
+            </ol>
+            <p>For best results, ensure all fields are filled with accurate measurements.</p>
+            <p><em>Note: This is placeholder text that you can replace with your actual instructions.</em></p>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

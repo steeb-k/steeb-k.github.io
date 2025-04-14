@@ -140,17 +140,38 @@
         <div class="help-content">
             <button class="close-help" id="closeHelp">&times;</button>
             <h2>How to Use This Tool</h2>
-            <p>Here's a brief guide on using the Shrinkage Calculator:</p>
-            <ol>
-                <li>Enter your measurement values for each axis (X, Y, Z) across the three positions (Top, Middle, Bottom)</li>
-                <li>Set your current shrinkage percentages (default is 100%)</li>
-                <li>Click the "Calculate" button to process the data</li>
-                <li>View your adjusted XY Shrinkage and Z Shrinkage results</li>
-                <li>The calculator averages each axis across positions and divides by 20</li>
-                <li>Results are then adjusted by your current shrinkage percentages</li>
-            </ol>
-            <p>For best results, ensure all fields are filled with accurate measurements.</p>
-            <p><em>Note: This is placeholder text that you can replace with your actual instructions.</em></p>
+            
+            <div class="help-grid">
+                <div class="help-svg">
+                    <svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+                        <!-- Outer square with 10px border -->
+                        <rect x="5" y="5" width="190" height="190" fill="none" stroke="black" stroke-width="10"/>
+                        
+                        <!-- Large X in center (80% of interior size) -->
+                        <line x1="30" y1="30" x2="170" y2="170" stroke="black" stroke-width="20"/>
+                        <line x1="170" y1="30" x2="30" y2="170" stroke="black" stroke-width="20"/>
+                        
+                        <!-- Three horizontal lines -->
+                        <line x1="0" y1="20" x2="200" y2="20" stroke="red" stroke-width="5"/>
+                        <line x1="0" y1="100" x2="200" y2="100" stroke="red" stroke-width="5"/>
+                        <line x1="0" y1="180" x2="200" y2="180" stroke="red" stroke-width="5"/>
+                    </svg>
+                </div>
+                <div class="help-text">
+                    <p>This diagram represents the measurement framework:</p>
+                    <ul>
+                        <li>The outer square shows the measurement boundaries</li>
+                        <li>The X marks the central reference point</li>
+                        <li>Red lines indicate measurement planes</li>
+                    </ul>
+                    <p>When taking measurements:</p>
+                    <ol>
+                        <li>Align your object with the reference X</li>
+                        <li>Measure at each red plane position</li>
+                        <li>Enter values in the corresponding calculator fields</li>
+                    </ol>
+                </div>
+            </div>
         </div>
     </div>
 

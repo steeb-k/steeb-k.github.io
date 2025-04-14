@@ -41,19 +41,19 @@ document.getElementById('calculateBtn').addEventListener('click', () => {
     // Get all input values
     const inputs = {
         x: {
-            top: parseFloat(document.getElementById('x-top').value) || 0,
-            middle: parseFloat(document.getElementById('x-middle').value) || 0,
-            bottom: parseFloat(document.getElementById('x-bottom').value) || 0
+            top: parseFloat(document.getElementById('x-first').value) || 0,
+            middle: parseFloat(document.getElementById('x-second').value) || 0,
+            bottom: parseFloat(document.getElementById('x-third').value) || 0
         },
         y: {
-            top: parseFloat(document.getElementById('y-top').value) || 0,
-            middle: parseFloat(document.getElementById('y-middle').value) || 0,
-            bottom: parseFloat(document.getElementById('y-bottom').value) || 0
+            top: parseFloat(document.getElementById('y-first').value) || 0,
+            middle: parseFloat(document.getElementById('y-second').value) || 0,
+            bottom: parseFloat(document.getElementById('y-third').value) || 0
         },
         z: {
-            top: parseFloat(document.getElementById('z-top').value) || 0,
-            middle: parseFloat(document.getElementById('z-middle').value) || 0,
-            bottom: parseFloat(document.getElementById('z-bottom').value) || 0
+            top: parseFloat(document.getElementById('z-first').value) || 0,
+            middle: parseFloat(document.getElementById('z-second').value) || 0,
+            bottom: parseFloat(document.getElementById('z-third').value) || 0
         }
     };
 

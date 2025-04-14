@@ -33,6 +33,39 @@ input[type="number"] {
         --result-bg: #2d2d2d;
         --help-content-bg: var(--bg-color);
     }
+     
+    .formula-content svg [stroke="black"] {
+        stroke: white;
+    }
+    .formula-content svg [stroke="red"] {
+        stroke: #ff6b6b; /* Slightly desaturated red for better dark mode visibility */
+    }
+
+}
+
+.help-grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 30px;
+    align-items: center;
+    margin-top: 20px;
+}
+
+.help-svg {
+    width: 200px;
+}
+
+.help-text {
+    max-width: 400px;
+}
+
+@media (max-width: 700px) {
+    .help-grid {
+        grid-template-columns: 1fr;
+    }
+    .help-svg {
+        margin: 0 auto;
+    }
 }
 
 body {

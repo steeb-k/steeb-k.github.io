@@ -74,7 +74,7 @@
     <div class="container">
         <h1 class="glow">Page Moved</h1>
         <p>This page has been permanently moved to a new location.</p>
-        <p>You will be automatically redirected in <span id="count">5</span> seconds.</p>
+        <p>You will be automatically redirected in <span id="count">1</span> seconds.</p>
         <p>If you are not redirected, please click the link below:</p>
         <a href="https://steeb-k.github.io/alphabox" class="link">Go to New Page</a>
         <div class="countdown">Taking too long? <a href="https://steeb-k.github.io/alphabox" style="color: #4CAF50;">Click here</a></div>
@@ -82,11 +82,9 @@
 
     <script>
         // Show alert when page loads
-        window.onload = function() {
-            alert("This page has moved to a new URL: https://steeb-k.github.io/alphabox\nYou will be automatically redirected.");
-            
+        window.onload = function() {    
             // Countdown and redirect
-            let seconds = 5;
+            let seconds = 1;
             const countElement = document.getElementById('count');
             const countdown = setInterval(function() {
                 seconds--;

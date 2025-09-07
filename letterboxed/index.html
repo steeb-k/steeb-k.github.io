@@ -1,19 +1,103 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-	<meta charset='utf-8'>
-	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-	<title>alphabox</title>
-
-	<link rel='icon' type='image/png' href='./favicon.png'>
-	<link rel='stylesheet' href='./global.css'>
-	<link rel='stylesheet' href='./build/bundle.css'>
-	<script defer src='./build/bundle.js'></script>
-	</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Page Has Moved</title>
+    <style>
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+        
+        .container {
+            text-align: center;
+            padding: 2rem;
+            border-radius: 10px;
+            background-color: rgba(30, 30, 30, 0.9);
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+            max-width: 500px;
+            animation: fadeIn 1s ease-out;
+        }
+        
+        h1 {
+            color: #4CAF50;
+            margin-bottom: 1.5rem;
+        }
+        
+        p {
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
+        }
+        
+        .link {
+            display: inline-block;
+            margin-top: 1rem;
+            padding: 12px 24px;
+            background-color: #4CAF50;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+        
+        .link:hover {
+            background-color: #45a049;
+            transform: scale(1.05);
+        }
+        
+        .countdown {
+            margin-top: 1.5rem;
+            font-size: 0.9rem;
+            color: #bbb;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .glow {
+            text-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+        }
+    </style>
 </head>
-
 <body>
-</body>
+    <div class="container">
+        <h1 class="glow">Page Moved</h1>
+        <p>This page has been permanently moved to a new location.</p>
+        <p>You will be automatically redirected in <span id="count">5</span> seconds.</p>
+        <p>If you are not redirected, please click the link below:</p>
+        <a href="https://steeb-k.github.io/alphabox" class="link">Go to New Page</a>
+        <div class="countdown">Taking too long? <a href="https://steeb-k.github.io/alphabox" style="color: #4CAF50;">Click here</a></div>
+    </div>
 
+    <script>
+        // Show alert when page loads
+        window.onload = function() {
+            alert("This page has moved to a new URL: https://steeb-k.github.io/alphabox\nYou will be automatically redirected.");
+            
+            // Countdown and redirect
+            let seconds = 5;
+            const countElement = document.getElementById('count');
+            const countdown = setInterval(function() {
+                seconds--;
+                countElement.textContent = seconds;
+                
+                if (seconds <= 0) {
+                    clearInterval(countdown);
+                    window.location.href = "https://steeb-k.github.io/alphabox";
+                }
+            }, 1000);
+        };
+    </script>
+</body>
 </html>

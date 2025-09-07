@@ -28,7 +28,9 @@
 
 @font-face {
     font-family: "Squaresville";
-    src: url("./SQUARESV.TTF") format("truetype");
+    src: local("Squaresville"), 
+         url("/SQUARESV.TTF") format("truetype"),
+         url("https://steeb-k.github.io/alphabox/SQUARESV.TTF") format("truetype");
     font-weight: 900;
     font-style: normal;
 }

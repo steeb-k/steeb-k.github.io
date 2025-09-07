@@ -28,7 +28,7 @@
 
 @font-face {
     font-family: "Squaresville";
-    src: url("/SQUARESV.TTF") format("truetype");
+    src: url("./SQUARESV.TTF") format("truetype");
     font-weight: 900;
     font-style: normal;
 }

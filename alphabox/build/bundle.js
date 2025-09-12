@@ -8782,9 +8782,9 @@ var app = (function () {
 
     let loadWords = async (path) => fetch(path)
         .then(response => response.text()).then(t => {
-            let a = t.split('\n');
+            let a = t.split('\n').map(w => w.toLowerCase());
             a.pop();
-            return a;
+            return a.sort(); // Add this line
         });
 
 

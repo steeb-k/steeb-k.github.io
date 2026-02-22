@@ -1,0 +1,1 @@
+if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/hob-gobblin/sw.js', { scope: '/hob-gobblin/' })})}

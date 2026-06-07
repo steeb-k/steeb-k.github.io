@@ -1,0 +1,63 @@
+# Deploy the Jellyskin Kodi repository to GitHub Pages.
+#
+# The skin zip is ~215MB. It cannot live in git (100MB limit) and Git LFS
+# pointers are served as-is by GitHub Pages, which breaks Kodi installs.
+# This workflow builds from steeb-k/jellyskin and publishes the full site
+# artifact, including the real zip binary.
+
+name: Deploy Kodi repository
+
+on:
+  workflow_dispatch:
+  repository_dispatch:
+    types: [update-kodi-repo]
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/deploy-kodi-repository.yml
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout site
+        uses: actions/checkout@v4
+
+      - name: Checkout Jellyskin
+        uses: actions/checkout@v4
+        with:
+          repository: steeb-k/jellyskin
+          path: jellyskin
+          ref: master
+
+      - name: Build Kodi repository
+        run: |
+          python3 jellyskin/repo/build.py --url https://steeb-k.github.io/kodi
+          python3 jellyskin/repo/generate-kodi-index.py jellyskin/repo/dist --web-prefix kodi
+
+      - name: Install built repository
+        run: |
+          rm -rf kodi
+          cp -a jellyskin/repo/dist kodi
+          touch kodi/.nojekyll
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

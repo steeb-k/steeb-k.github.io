@@ -42,6 +42,9 @@ jobs:
           path: jellyskin
           ref: master
 
+      - name: Fetch addon sources
+        run: bash jellyskin/repo/fetch-addon-sources.sh
+
       - name: Build Kodi repository
         run: |
           python3 jellyskin/repo/build.py --url https://steeb-k.github.io/kodi

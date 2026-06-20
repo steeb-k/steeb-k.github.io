@@ -15,6 +15,7 @@ on:
     branches: [main]
     paths:
       - .github/workflows/deploy-kodi-repository.yml
+      - seed-install.sh
 
 permissions:
   contents: read

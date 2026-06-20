@@ -1,16 +1,18 @@
 #!/bin/sh
-# S.E.E.D. (Seed Sync) bootstrap — install, update, or remove in one command.
+# S.E.E.D. (Seed Sync) bootstrap — install, update, or remove in one command, on
+# Linux OR macOS. This is the canonical script hosted at:
 #
 #   curl -fsSL https://steeb-k.github.io/seed-install.sh | sh
 #
-# Interactive when run from a terminal; otherwise defaults to install/update.
-# Non-interactive override:
+# It detects the OS, selects the matching release asset, unpacks it, and runs the
+# bundled `seed-sync --install`. After the first install, manage everything with
+# the `seed-sync` command. Interactive when run from a terminal; otherwise defaults
+# to install/update. Non-interactive override:
 #   ... | sh -s -- install     (or update / remove)
 #   SEED_ACTION=install ... | sh
 #
-# Source of truth: packaging/linux/web-install.sh in seed-sync-gtk. Mirrored to
-# steeb-k.github.io/seed-install.sh (canonical) and seed-sync-binaries/install.sh
-# (raw fallback). After the first install, manage everything with `seed-sync`.
+# Source of truth: packaging/web-install.sh in seed-sync-gtk. Mirror to
+# steeb-k.github.io/seed-install.sh (canonical) and seed-sync-binaries/install.sh.
 set -eu
 
 REPO="${SEED_BINARIES_REPO:-steeb-k/seed-sync-binaries}"
@@ -20,13 +22,29 @@ say()  { printf '%s\n' "$*"; }
 die()  { printf '%s\n' "seed-sync: error: $*" >&2; exit 1; }
 have() { command -v "$1" >/dev/null 2>&1; }
 
+# --- OS detection: pick the asset regex + the unpacked-tree root marker. --------
+OS="$(uname -s)"
+case "$OS" in
+  Linux)
+    ASSET_RE='https://[^"]+linux-x86_64\.tar\.gz'
+    ASSET_DESC="linux-x86_64.tar.gz"
+    find_root() { find "$1" -maxdepth 2 -type d -name bin -exec dirname {} ';' | head -n1; }
+    ;;
+  Darwin)
+    case "$(uname -m)" in arm64) HOST=arm64 ;; *) HOST=x86_64 ;; esac
+    ASSET_RE="https://[^\"]+macos-(universal|$HOST)\\.tar\\.gz"
+    ASSET_DESC="macos-$HOST (or -universal) tarball"
+    find_root() { find "$1" -maxdepth 2 -type d -name "SEED Sync.app" -exec dirname {} ';' | head -n1; }
+    ;;
+  *) die "unsupported OS: $OS (Linux and macOS only)" ;;
+esac
+
 have curl || die "curl is required"
 have tar  || die "tar is required"
 
-# Branding banner: the SEED wordmark with a vertical neon-green→neon-purple
+# Branding banner: the SEED wordmark with a vertical neon-green->neon-purple
 # gradient, the full name centered beneath. Truecolor only on a real terminal
-# (and unless NO_COLOR is set); otherwise printed plain so a piped/captured run
-# isn't littered with escape codes.
+# (and unless NO_COLOR is set); otherwise printed plain.
 print_banner() {
   art=' @@@@@@        @@@@@@@@       @@@@@@@@       @@@@@@@
 @@@@@@@        @@@@@@@@       @@@@@@@@       @@@@@@@@
@@ -39,17 +57,13 @@ print_banner() {
 :::: ::   :::   :: ::::  :::   :: ::::  :::   :::: ::
 :: : :    :::  : :: ::   :::  : :: ::   :::  :: :  :   '
   sub='Secure Environment Exchange Daemon'
-
-  # Center the subtitle under the widest art line.
   width=$(printf '%s\n' "$art" | awk '{ n=length($0); if (n>m) m=n } END { print m+0 }')
   pad=$(( (width - ${#sub}) / 2 ))
   [ "$pad" -lt 0 ] && pad=0
   indent=$(printf "%${pad}s" '')
-
   if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
     total=$(printf '%s\n' "$art" | wc -l)
     [ "$total" -lt 2 ] && total=2
-    # Gradient endpoints: neon green (57,255,20) → neon purple (188,19,254).
     i=0
     printf '%s\n' "$art" | while IFS= read -r line; do
       r=$(( 57  + 131 * i / (total - 1) ))
@@ -72,9 +86,6 @@ if have seed-daemon; then
 fi
 
 # Pick the action: CLI arg > $SEED_ACTION > interactive menu > sane default.
-# Probe for a real terminal in a SUBSHELL: a redirection-only `exec` that fails
-# would exit a non-interactive shell, and `{ }` braces don't contain it — only a
-# subshell does. (`[ -r /dev/tty ]` lies: it's true even with no controlling tty.)
 ACTION="${1:-${SEED_ACTION:-}}"
 if [ -z "$ACTION" ]; then
   if (exec 3</dev/tty) 2>/dev/null; then
@@ -120,12 +131,12 @@ fi
 [ "$ACTION" = remove ] && die "S.E.E.D. is not installed"
 
 # First-time install: fetch the latest release tarball and run its wrapper.
-URL="$(curl -fsSL "$API" | grep -oE '"browser_download_url": *"https://[^"]+linux-x86_64\.tar\.gz"' | sed -E 's/.*"(https[^"]+)".*/\1/' | head -n1)"
-[ -n "$URL" ] || die "no linux-x86_64.tar.gz asset in the latest release of $REPO"
+URL="$(curl -fsSL "$API" | grep -oE "\"browser_download_url\": *\"$ASSET_RE\"" | sed -E 's/.*"(https[^"]+)".*/\1/' | head -n1)"
+[ -n "$URL" ] || die "no $ASSET_DESC in the latest release of $REPO"
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 say "Downloading $URL"
 curl -fsSL -o "$TMP/pkg.tgz" "$URL" || die "download failed"
 tar -xzf "$TMP/pkg.tgz" -C "$TMP" || die "extract failed"
-ROOT="$(find "$TMP" -maxdepth 2 -type d -name bin -exec dirname {} ';' | head -n1)"
-[ -n "$ROOT" ] || die "downloaded archive has no bin/ directory"
+ROOT="$(find_root "$TMP")"
+[ -n "$ROOT" ] || die "downloaded archive has an unexpected layout"
 "$ROOT/seed-sync" --install

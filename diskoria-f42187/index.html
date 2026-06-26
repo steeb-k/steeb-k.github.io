@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Diskoria — Storage health, sector scans &amp; benchmarks for Windows</title>
+  <meta name="description" content="Diskoria is a portable Windows storage utility: drive health (SMART / NVMe / UFS), read-only sector scanning, full-disk verification, and speed benchmarks — rendered on the CPU, no GPU required." />
+  <link rel="icon" type="image/png" href="images/logo.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- scroll progress bar -->
+  <div class="scroll-progress" id="scrollProgress"></div>
+
+  <!-- ambient disco glow behind the hero / closer -->
+  <div class="ambient" aria-hidden="true">
+    <span class="orb orb-1"></span>
+    <span class="orb orb-2"></span>
+    <span class="orb orb-3"></span>
+  </div>
+
+  <!-- ============ HERO ============ -->
+  <header class="hero" id="top">
+    <div class="hero-inner reveal">
+      <img class="hero-logo" src="images/logo.png" alt="Diskoria disco-ball logo" />
+      <h1 class="hero-title">Diskoria</h1>
+      <p class="hero-tagline">
+        Storage health, sector scans, and real-world benchmarks —
+        in one portable Windows app.
+      </p>
+      <p class="hero-sub">
+        Custom CPU-rendered UI. No GPU drivers, no OpenGL, no installer required —
+        it even runs inside Windows recovery.
+      </p>
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="https://github.com/steeb-k/diskoria-binaries/releases" target="_blank" rel="noopener">
+          Download for Windows
+        </a>
+        <a class="btn btn-ghost" href="https://github.com/steeb-k/diskoria" target="_blank" rel="noopener">
+          View source on GitHub
+        </a>
+      </div>
+      <p class="hero-meta">Windows 10 / 11 · 64-bit · Run as Administrator</p>
+    </div>
+    <div class="scroll-hint" aria-hidden="true">
+      <span>scroll</span>
+      <div class="scroll-hint-line"></div>
+    </div>
+  </header>
+
+  <!-- ============ FULL-BLEED SCROLL SLIDESHOW ============ -->
+  <!-- .deck is a tall scroll track; .stage pins to the viewport. Each slide
+       fills the screen (blurred backdrop + sharp foreground). As you scroll
+       through a slide: it sits solid, then a scrim darkens it, then the header
+       drops in from the top and the body fades up. All scrubbed in script.js. -->
+  <section class="deck" id="deck" aria-label="Feature slideshow">
+    <div class="stage">
+      <ol class="slides" id="slides">
+
+        <!-- 01 Drive Health -->
+        <li class="slide" data-index="0">
+          <div class="slide-bg" style="background-image:url('images/diskoria01.png')"></div>
+          <figure class="slide-media">
+            <img src="images/diskoria01.png" alt="Diskoria Drive Health page showing vitals and a temperature history chart" />
+          </figure>
+          <div class="slide-scrim" aria-hidden="true"></div>
+          <div class="slide-copy">
+            <div class="copy-head">
+              <span class="eyebrow">Drive Health</span>
+              <h2 class="headline">Know your drive's health at a glance</h2>
+            </div>
+            <div class="copy-body">
+              <p>
+                SMART, NVMe, and UFS diagnostics read straight from the drive —
+                temperature, wear level, power-on hours, data written, and media
+                errors, all in one live panel, with a temperature history chart
+                spanning the last hour to seven days.
+              </p>
+            </div>
+          </div>
+        </li>
+
+        <!-- 02 Sector Read Test (running) -->
+        <li class="slide" data-index="1">
+          <div class="slide-bg" style="background-image:url('images/diskoria02.png')"></div>
+          <figure class="slide-media">
+            <img src="images/diskoria02.png" alt="Diskoria Sector Read Test running, showing the live sector map filling in" />
+          </figure>
+          <div class="slide-scrim" aria-hidden="true"></div>
+          <div class="slide-copy">
+            <div class="copy-head">
+              <span class="eyebrow">Sector Read Test</span>
+              <h2 class="headline">Scan every sector, completely read-only</h2>
+            </div>
+            <div class="copy-body">
+              <p>
+                A non-destructive surface scan reads the entire disk sequentially
+                and maps each block as good, slow, or bad — watch the heat-map
+                fill in block by block while bad sectors are isolated to pinpoint
+                the trouble.
+              </p>
+            </div>
+          </div>
+        </li>
+
+        <!-- 03 PASS -->
+        <li class="slide slide-accent" data-index="2">
+          <div class="slide-bg" style="background-image:url('images/diskoria03.png')"></div>
+          <figure class="slide-media">
+            <img src="images/diskoria03.png" alt="Diskoria showing a large green PASS verdict over a completed sector scan" />
+          </figure>
+          <div class="slide-scrim" aria-hidden="true"></div>
+          <div class="slide-copy">
+            <div class="copy-head">
+              <span class="eyebrow">Verdict</span>
+              <h2 class="headline">An answer you can't misread</h2>
+            </div>
+            <div class="copy-body">
+              <p>
+                When the scan finishes, Diskoria gives you a single, unmistakable
+                verdict — a full-screen <strong>PASS</strong> or
+                <strong>FAIL</strong>. No squinting at logs to decide whether the
+                drive is okay.
+              </p>
+            </div>
+          </div>
+        </li>
+
+        <!-- 04 Performance chart -->
+        <li class="slide" data-index="3">
+          <div class="slide-bg" style="background-image:url('images/diskoria04.png')"></div>
+          <figure class="slide-media">
+            <img src="images/diskoria04.png" alt="Diskoria Sector Read Test performance chart plotting speed against disk position" />
+          </figure>
+          <div class="slide-scrim" aria-hidden="true"></div>
+          <div class="slide-copy">
+            <div class="copy-head">
+              <span class="eyebrow">Performance Chart</span>
+              <h2 class="headline">See speed across the whole platter</h2>
+            </div>
+            <div class="copy-body">
+              <p>
+                Switch from the sector map to the performance chart to see
+                throughput plotted against position on the disk — slow zones and
+                degradation jump right out, with average speed, bad sectors, and
+                timing pinned below.
+              </p>
+            </div>
+          </div>
+        </li>
+
+        <!-- 05 Health Data Report -->
+        <li class="slide" data-index="4">
+          <div class="slide-bg" style="background-image:url('images/diskoria05.png')"></div>
+          <figure class="slide-media slide-media-tall">
+            <img src="images/diskoria05.png" alt="Diskoria exported Health Data Report with model, serial, vitals and a performance graph" />
+          </figure>
+          <div class="slide-scrim" aria-hidden="true"></div>
+          <div class="slide-copy">
+            <div class="copy-head">
+              <span class="eyebrow">Reports</span>
+              <h2 class="headline">Export a clean, shareable report</h2>
+            </div>
+            <div class="copy-body">
+              <p>
+                Generate a polished health report in one click — model, serial,
+                bus, media, capacity, and every vital, topped with the performance
+                graph. Ready to hand to a client, a buyer, or your future self.
+              </p>
+            </div>
+          </div>
+        </li>
+
+        <!-- 06 Performance chart fullscreen -->
+        <li class="slide" data-index="5">
+          <div class="slide-bg" style="background-image:url('images/diskoria06.png')"></div>
+          <figure class="slide-media slide-media-wide">
+            <img src="images/diskoria06.png" alt="Diskoria fullscreen performance chart with zoom and pan" />
+          </figure>
+          <div class="slide-scrim" aria-hidden="true"></div>
+          <div class="slide-copy">
+            <div class="copy-head">
+              <span class="eyebrow">Deep Dive</span>
+              <h2 class="headline">Zoom in on every detail</h2>
+            </div>
+            <div class="copy-body">
+              <p>
+                Pop any chart out to full screen, scroll to zoom, and drag to pan —
+                inspect each dip in throughput down to the gigabyte, with the raw
+                samples scattered behind the smoothed line so averaging hides
+                nothing.
+              </p>
+            </div>
+          </div>
+        </li>
+
+        <!-- 07 Benchmark -->
+        <li class="slide" data-index="6">
+          <div class="slide-bg" style="background-image:url('images/diskoria07.png')"></div>
+          <figure class="slide-media">
+            <img src="images/diskoria07.png" alt="Diskoria Benchmark page showing sequential and random 4K read and write results" />
+          </figure>
+          <div class="slide-scrim" aria-hidden="true"></div>
+          <div class="slide-copy">
+            <div class="copy-head">
+              <span class="eyebrow">Benchmark</span>
+              <h2 class="headline">Measure real-world speed</h2>
+            </div>
+            <div class="copy-body">
+              <p>
+                A file-based benchmark measures sequential and random 4K
+                read/write performance, so you see how the drive actually behaves
+                — not what the box claims — in four big, legible numbers.
+              </p>
+            </div>
+          </div>
+        </li>
+
+      </ol>
+
+      <!-- slide dot navigation -->
+      <nav class="dots" id="dots" aria-label="Jump to feature"></nav>
+    </div>
+  </section>
+
+  <!-- ============ CLOSING CTA ============ -->
+  <section class="closer reveal">
+    <img class="closer-logo" src="images/logo.png" alt="" aria-hidden="true" />
+    <h2>Give your drives a check-up.</h2>
+    <p>Free, portable, and Administrator-ready — download the latest build and run it.</p>
+    <div class="hero-cta">
+      <a class="btn btn-primary" href="https://github.com/steeb-k/diskoria-binaries/releases" target="_blank" rel="noopener">
+        Download for Windows
+      </a>
+      <a class="btn btn-ghost" href="https://github.com/steeb-k/diskoria" target="_blank" rel="noopener">
+        View source on GitHub
+      </a>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <p>
+      <strong>Diskoria</strong> — Windows storage utility ·
+      <a href="https://github.com/steeb-k/diskoria" target="_blank" rel="noopener">Source</a> ·
+      <a href="https://github.com/steeb-k/diskoria-binaries/releases" target="_blank" rel="noopener">Releases</a>
+    </p>
+    <p class="muted">Windows 10 / 11 · Run as Administrator · CPU-rendered, no GPU required.</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

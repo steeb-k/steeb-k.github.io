@@ -1,0 +1,43 @@
+# Publish the site to GitHub Pages.
+#
+# Replaces the old Kodi repository build, which checked out steeb-k/jellyskin
+# and assembled a ~215MB skin zip at deploy time. That project is retired, so
+# the site is now just the static files committed here and this uploads the
+# checkout as it stands. Pages is configured for workflow builds rather than
+# branch builds, so something has to run for anything to publish at all --
+# hence a workflow, minimal as it is, rather than no CI.
+
+name: Deploy Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

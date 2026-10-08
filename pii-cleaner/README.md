@@ -1,4 +1,4 @@
-# PII Cleaner
+# PII Cleaner &mdash; web app
 
 A local-only, single-page web app that sanitizes CrowdStrike Falcon and
 Rapid7 (InsightIDR / InsightVM) JSON logs by replacing PII with typed,
@@ -8,6 +8,12 @@ mode in v1 &mdash; see Limitations).
 
 Everything runs in your browser tab. Nothing is uploaded, nothing is
 persisted automatically, and there is no server-side processing.
+
+This is one of several host apps built on the shared sanitizer in
+[`core/`](../../core/README.md); see the [repo root README](../../README.md)
+for the overall project layout, and [`apps/cli/`](../cli/README.md) for the
+Node command-line host. This document covers only the web app in
+`apps/web/`.
 
 ## What it does
 
@@ -36,25 +42,38 @@ persisted automatically, and there is no server-side processing.
 
 ## How to run
 
-Either works equally well; both are exercised by the test suite.
+Either works equally well; both are exercised by the test suite. Run both
+from the repo root, since `index.html` loads the shared core from
+`../../core/sanitizer.js`.
 
 ### Option A: plain `file://`
 
-Just open `index.html` in your browser (double-click it, or
+Open `apps/web/index.html` in your browser (double-click it, or
 `File > Open`). No server, no build step.
 
 ### Option B: local HTTP server
 
 ```sh
-python3 serve.py            # http://127.0.0.1:8080/
-python3 serve.py 8099       # custom port
+python3 apps/web/serve.py          # http://127.0.0.1:8080/apps/web/
+python3 apps/web/serve.py 8099      # custom port
+# or: npm run serve
 ```
 
 `serve.py` is stdlib-only (`http.server`), binds strictly to
 `127.0.0.1` (never `0.0.0.0`, so nothing outside this machine can ever
-reach it), serves the directory the script itself lives in (regardless
-of your current working directory), sends `Cache-Control: no-store` on
-every response, and prints the URL to connect to. `Ctrl+C` stops it.
+reach it), serves the **repository root** (regardless of your current
+working directory, so the relative `../../core/sanitizer.js` reference
+resolves), sends `Cache-Control: no-store` on every response, and prints
+the URL to connect to (`http://127.0.0.1:PORT/apps/web/`). `Ctrl+C` stops
+it.
+
+### Option C: a deployable static build
+
+```sh
+bash scripts/build-web.sh    # writes dist/web/, a flat copy with no relative ../../ paths
+```
+
+See the root README's "Deploying the web app" section.
 
 ## No-network guarantees, and how to verify them yourself
 
@@ -67,7 +86,7 @@ The app makes zero network requests, by construction:
   pasted log line somehow tried to trigger one.
 - There are no `<script src="https://...">`/CDN includes, no fonts,
   no analytics, no service workers.
-- `sanitizer.js` and `app.js` contain no `fetch(`, `XMLHttpRequest`,
+- `core/sanitizer.js` and `app.js` contain no `fetch(`, `XMLHttpRequest`,
   `WebSocket`, or URL literals.
 - No `localStorage`, `sessionStorage`, `IndexedDB`, or cookies are
   used anywhere; the dictionary/legend/inputs live only in JS memory
@@ -83,9 +102,9 @@ To verify this yourself:
    `styles.css`, `sanitizer.js`, `app.js` (and any sample file you
    open) &mdash; nothing else, ever. With `file://` the Network tab will
    show nothing at all, since there's no HTTP layer in play.
-2. **Static grep check.** From the project directory:
+2. **Static grep check.** From the repo root:
    ```sh
-   grep -nE "https?://|fetch\(|XMLHttpRequest|WebSocket|localStorage|sessionStorage|indexedDB" *.js *.html
+   grep -rnE "https?://|fetch\(|XMLHttpRequest|WebSocket|localStorage|sessionStorage|indexedDB" core apps --include=*.js --include=*.html
    ```
    This should return nothing (or only comments/the CSP meta line).
 
@@ -139,8 +158,9 @@ adds that exact value to the right list and re-sanitizes immediately.
 
 ## Samples
 
-`samples/` has four synthetic, fictional inputs (no real hosts, users,
-or IPs) to exercise every detector:
+`samples/` (repo root) has four synthetic, fictional inputs (no real
+hosts, users, or IPs) to exercise every detector in the file picker or
+textarea:
 
 - `crowdstrike_detection.json` &mdash; a Falcon `DetectionSummaryEvent`-style
   record.
@@ -150,29 +170,29 @@ or IPs) to exercise every detector:
 - `rapid7_vm_asset.json` &mdash; a synthetic InsightVM asset (`hostName`/
   `hostNames`, `addresses`, `osFingerprint`, `ids`).
 
-You can sanitize any of these from Node directly, e.g.:
-
-```sh
-node -e "
-const s = require('./sanitizer.js');
-const sess = s.createSession();
-const r = sess.sanitize(require('fs').readFileSync('samples/crowdstrike_detection.json','utf8'));
-console.log(r.output);
-"
-```
+To sanitize one from the command line instead of a browser, use the CLI
+host in [`apps/cli/`](../cli/README.md), or embed `core/` directly &mdash;
+see [`core/README.md`](../../core/README.md) for the API.
 
 ## Tests
 
+From the repo root:
+
 ```sh
-node --test tests/
+node --test apps/web/test/    # or: npm run test:web
 ```
 
-119 tests: pure-logic unit tests, static no-network checks, a live
-`serve.py` check, and a headless Chromium run (DevTools Protocol, no
-installs) that drives the UI end to end and asserts zero foreign
-requests and zero CSP violations.
+This app's tests are `nonetwork.test.js` (static no-network checks plus
+a live `serve.py` check) and `browser.test.js` (a headless Chromium run,
+DevTools Protocol, no installs, that drives the UI end to end and
+asserts zero foreign requests and zero CSP violations). `browser.test.js`
+needs a Chromium binary (`/usr/bin/chromium` or similar) and is **not**
+run in CI (see `.github/workflows/ci.yml`) &mdash; it is skipped
+automatically wherever no Chromium binary is found, and should be run
+locally before release. Core sanitizer logic is unit-tested separately
+under `core/test/`.
 
-## Limitations (v1, by design &mdash; see SPEC.md "Non-goals")
+## Limitations (v1, by design &mdash; see docs/SPEC.md "Non-goals")
 
 - No reverse mode (restoring original values from tokens).
 - No timestamp shifting; timestamps are left untouched.

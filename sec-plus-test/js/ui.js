@@ -52,7 +52,7 @@ var UI = (function () {
     return 'module quiz: ' + dname(s.domain);
   }
 
-  function back() { return '<p><a href="#/">&larr; Home</a></p>'; }
+  function back() { return ''; } // header brand pill is the home link
   function radio(name, val, label, checked) {
     return '<label class="choice"><input type="radio" name="' + name + '" value="' + val + '"' + (checked ? ' checked' : '') + '> <span>' + label + '</span></label>';
   }

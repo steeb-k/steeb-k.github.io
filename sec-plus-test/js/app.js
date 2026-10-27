@@ -4,6 +4,11 @@
   var bank = window.SEC_BANK || [], pbqBank = window.SEC_PBQ || [], EXAM = window.SEC_EXAM;
   var qmap = {};
   bank.concat(pbqBank).forEach(function (q) { qmap[q.id] = q; });
+  function acroFor(q) {
+    var g = window.SEC_ACRONYMS;
+    if (!g || S.settings.showAcronyms === false) return [];
+    try { return Engine.acronymsIn(q, g); } catch (e) { return []; }
+  }
   var appEl = document.getElementById('app');
   var S = { session: null, qstats: {}, settings: {}, showReview: false, filter: 'all', filterFor: null, msg: '', routeKey: '', focusId: null, notice: null };
 
@@ -142,7 +147,7 @@
     return { session: s, q: q, idx: s.idx, practice: practice, answer: ans, locked: practice && !!s.checked[q.id],
       order: (q.type === 'single' || q.type === 'multi') ? Engine.optionOrder(q, s.id) : null,
       flagged: !!s.flags[q.id], hasAnswer: Engine.isAnswered(q, ans) || q.type === 'order', result: Engine.scoreQuestion(q, ans, s.id),
-      cells: cells, showReview: S.showReview, timerText: timerText(), notice: S.notice && S.notice.id === q.id ? S.notice.text : '' };
+      acro: (practice && s.checked[q.id]) ? acroFor(q) : [], cells: cells, showReview: S.showReview, timerText: timerText(), notice: S.notice && S.notice.id === q.id ? S.notice.text : '' };
   }
   function quizHtml() { return UI.quiz(quizCtx()); }
 
@@ -153,7 +158,7 @@
     var items = [];
     a.items.forEach(function (it, i) {
       var q = qmap[it.id]; if (!q) return;
-      var o = { n: i + 1, q: q, answer: it.answer, flagged: it.flagged, points: it.points, correct: it.correct, answered: it.answered };
+      var o = { n: i + 1, q: q, answer: it.answer, flagged: it.flagged, points: it.points, correct: it.correct, answered: it.answered, acro: acroFor(q) };
       if (S.filter === 'missed' && it.correct) return;
       if (S.filter === 'flagged' && !it.flagged) return;
       items.push(o);

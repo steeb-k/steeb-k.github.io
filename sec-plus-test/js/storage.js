@@ -17,7 +17,7 @@ var Store = (function () {
   }
   function del(key) { delete mem[key]; if (ok) try { localStorage.removeItem(P + key); } catch (e) {} }
 
-  var DEFAULTS = { strictTimer: false, theme: 'auto' };
+  var DEFAULTS = { strictTimer: false, theme: 'auto', showAcronyms: true };
   var api = {
     available: function () { return ok; },
     getSession: function () { return get('session', null); },

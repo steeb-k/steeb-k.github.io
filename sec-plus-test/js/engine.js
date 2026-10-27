@@ -219,6 +219,73 @@ var Engine = (function () {
     return qstats;
   }
 
+  /* ---------- acronym glossary ---------- */
+  var acroCache = (typeof WeakMap !== 'undefined') ? new WeakMap() : null;
+  function escRe(s) { return s.replace(/[.*+?^${}()|[\]\\\/-]/g, '\\$&'); }
+  function compact(s) { return String(s).toLowerCase().replace(/[^a-z0-9]+/g, ''); }
+  /* Phrases whose presence in the item means the acronym is already spelled out: the main expansion plus
+     "(also X, Y)" / "(or X)" alternates. Single-word expansions ("Text", "Database") never count -- the bare
+     word appearing somewhere is not the item explaining the acronym. Compared hyphen/space-insensitively. */
+  function spelledForms(exp) {
+    var out = [exp.split(' (')[0]], m = /\((?:also|or) ([^)]*)\)/.exec(exp);
+    if (m) out = out.concat(m[1].split(/, | or /));
+    return out.filter(function (x) { return /[\s-]/.test(x.trim()); }).map(compact).filter(Boolean);
+  }
+  function compileGlossary(g) {
+    var keys = Object.keys(g), sig = keys.map(function (k) { return k + '\u0001' + g[k]; }).join('\u0002');
+    var hit = acroCache && acroCache.get(g);
+    if (hit && hit.sig === sig) return hit.list; /* glossary mutated in place -> recompile */
+    var list = keys.map(function (k) {
+      var exp = String(g[k]);
+      /* boundary: not glued to another letter/digit; allows plural "s" (CAs, VLANs) and version "v2" (SNMPv3, IPv6) */
+      return { key: k, expansion: exp, base: compact(exp.split(' (')[0]), forms: spelledForms(exp),
+        re: new RegExp('(^|[^A-Za-z0-9])(' + escRe(k) + ')(?:s|v\\d+)?(?![A-Za-z0-9])', 'g') };
+    });
+    if (acroCache) acroCache.set(g, { sig: sig, list: list });
+    return list;
+  }
+  function itemParts(item) {
+    var body = [], i;
+    if (item.options) { body.push(item.question); body = body.concat(item.options); }
+    else {
+      body.push(item.title, item.instructions);
+      ['left', 'right', 'items'].forEach(function (f) { if (Array.isArray(item[f])) body = body.concat(item[f]); });
+      (item.columns || []).forEach(function (c) { body.push(c.label); body = body.concat(c.choices || []); });
+      (item.rows || []).forEach(function (r) {
+        body.push(r.label);
+        Object.keys(r.fixed || {}).forEach(function (k) { body.push(r.fixed[k]); });
+      });
+    }
+    return { body: body.filter(function (x) { return typeof x === 'string'; }), expl: typeof item.explanation === 'string' ? item.explanation : '' };
+  }
+  /* Acronyms used by the item (stem/options/PBQ body, then explanation) whose expansion the item does not already spell out.
+     Returns [{key, expansion}] in order of first appearance. A key seen only inside a longer listed key whose expansion
+     already covers it (AES inside AES-256, TLS inside EAP-TLS) is dropped. opts is reserved. */
+  function acronymsIn(item, glossary, opts) {
+    if (!item || !glossary || typeof glossary !== 'object') return [];
+    var list = compileGlossary(glossary), parts = itemParts(item);
+    var all = parts.body.join('\n') + '\n' + parts.expl, flat = compact(all);
+    var found = [];
+    list.forEach(function (e) {
+      if (e.forms.some(function (f) { return flat.indexOf(f) >= 0; })) return;
+      var m, spans = [];
+      e.re.lastIndex = 0;
+      while ((m = e.re.exec(all))) {
+        var st = m.index + m[1].length;
+        spans.push([st, st + m[2].length]);
+      }
+      if (spans.length) found.push({ key: e.key, expansion: e.expansion, base: e.base, spans: spans, pos: spans[0][0] });
+    });
+    found = found.filter(function (e) {
+      return !found.some(function (f) {
+        return f.key.length > e.key.length && e.base && compact(f.expansion).indexOf(e.base) >= 0 &&
+          e.spans.every(function (s) { return f.spans.some(function (t) { return t[0] <= s[0] && s[1] <= t[1]; }); });
+      });
+    });
+    found.sort(function (a, b) { return a.pos - b.pos || b.key.length - a.key.length; });
+    return found.map(function (f) { return { key: f.key, expansion: f.expansion }; });
+  }
+
   /* ---------- readiness ---------- */
   var READY = 0.83;
   function readiness(attempts, domain) {
@@ -255,7 +322,7 @@ var Engine = (function () {
     pickLeastSeen: pickLeastSeen, pickSpreadPbqs: pickSpreadPbqs, buildSession: buildSession, missedIds: missedIds,
     isAnswered: isAnswered, effectiveAnswer: effectiveAnswer, scoreQuestion: scoreQuestion, scoreSession: scoreSession, scaled: scaled, passed: passed,
     weakestObjectives: weakestObjectives, applyStats: applyStats, markSeen: markSeen, readiness: readiness, READY: READY,
-    Timer: Timer, fmtClock: fmtClock
+    Timer: Timer, fmtClock: fmtClock, acronymsIn: acronymsIn
   };
 })();
 if (typeof module !== 'undefined') module.exports = Engine;

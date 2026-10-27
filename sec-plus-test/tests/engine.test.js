@@ -226,4 +226,95 @@ t('timer fold logic', () => {
   assert.strictEqual(T.remaining(tm, 40000 + 100 * 60000), 0);
   assert.strictEqual(E.fmtClock(90 * 60000), '1:30:00'); assert.strictEqual(E.fmtClock(65000), '01:05');
 });
+
+/* ---------- acronymsIn ---------- */
+const G = { OCSP: 'Online Certificate Status Protocol', CA: 'Certificate Authority', CRL: 'Certificate Revocation List', TLS: 'Transport Layer Security',
+  MAC: 'Media Access Control (or Mandatory Access Control)', 'SHA-256': 'Secure Hash Algorithm 256-bit', 'TACACS+': 'Terminal Access Controller Access Control System Plus',
+  'CI/CD': 'Continuous Integration/Continuous Delivery', 'EAP-TLS': 'Extensible Authentication Protocol-Transport Layer Security' };
+const mcq = (question, explanation, options) => ({ id: 'x', type: 'single', question, options: options || ['a', 'b'], answer: [0], explanation });
+const keys = (item, g) => E.acronymsIn(item, g || G).map(x => x.key);
+t('acronymsIn: undefined/empty glossary -> []', () => {
+  assert.deepStrictEqual(E.acronymsIn(mcq('OCSP?', 'x'), undefined), []);
+  assert.deepStrictEqual(E.acronymsIn(mcq('OCSP?', 'x'), {}), []);
+});
+t('acronymsIn: case-sensitive boundary matching', () => {
+  assert.deepStrictEqual(keys(mcq('Which Mac address or mac filter?', 'x')), []);
+  assert.deepStrictEqual(keys(mcq('Which MAC filter?', 'x')), ['MAC']);
+  assert.deepStrictEqual(keys(mcq('MACHINE and CAT and ACA', 'x')), []);
+  assert.deepStrictEqual(keys(mcq('(CA), then CA.', 'x')), ['CA']);
+});
+t('acronymsIn: punctuation keys', () => {
+  assert.deepStrictEqual(keys(mcq('Use TACACS+ here', 'x')), ['TACACS+']);
+  assert.deepStrictEqual(keys(mcq('Use TACACS+, not x', 'x')), ['TACACS+']);
+  assert.deepStrictEqual(keys(mcq('Hash with SHA-256.', 'x')), ['SHA-256']);
+  assert.deepStrictEqual(keys(mcq('A CI/CD pipeline', 'x')), ['CI/CD']);
+  assert.deepStrictEqual(keys(mcq('SHA-2565 is not', 'x')), []);
+});
+t('acronymsIn: already expanded in item text is suppressed', () => {
+  assert.deepStrictEqual(keys(mcq('A Certificate Authority (CA) signs', 'The CA and CRL matter')), ['CRL']);
+  assert.deepStrictEqual(keys(mcq('Q?', 'certificate authority: the CA')), []);
+  assert.deepStrictEqual(keys(mcq('Which MAC?', 'media access control is meant')), []);
+});
+t('acronymsIn: stem-first ordering and de-dup', () => {
+  const r = E.acronymsIn(mcq('About OCSP stapling', 'The CA, CRL, TLS and OCSP and CA again', ['uses TLS', 'b']), G);
+  assert.deepStrictEqual(r.map(x => x.key), ['OCSP', 'TLS', 'CA', 'CRL']);
+  assert.strictEqual(r[0].expansion, 'Online Certificate Status Protocol');
+});
+t('acronymsIn: EAP-TLS covers TLS (expansion contains it); PBQ fields scanned', () => {
+  assert.deepStrictEqual(keys(mcq('EAP-TLS', 'x')), ['EAP-TLS']);
+  assert.deepStrictEqual(keys(mcq('EAP-TLS or plain TLS?', 'x')), ['EAP-TLS', 'TLS']);
+  const p = { id: 'p', type: 'config', title: 'Config', instructions: 'i', explanation: 'CRL',
+    columns: [{ key: 'a', label: 'A', choices: ['SHA-256', 'x'] }], rows: [{ label: 'CA row', fixed: {}, answer: { a: 'x' } }] };
+  assert.deepStrictEqual(keys(p), ['SHA-256', 'CA', 'CRL']);
+  assert.deepStrictEqual(keys({ type: 'match', title: 't', instructions: 'i', left: ['TLS'], right: ['r'], answer: [0], explanation: 'MAC' }), ['TLS', 'MAC']);
+});
+t('acronymsIn: plurals and version suffixes match; other glued letters do not', () => {
+  const g = { CA: 'Certificate Authority', VLAN: 'Virtual Local Area Network', SNMP: 'Simple Network Management Protocol', IP: 'Internet Protocol', DES: 'Data Encryption Standard' };
+  assert.deepStrictEqual(keys(mcq('Two CAs and VLANs', 'x'), g), ['CA', 'VLAN']);
+  assert.deepStrictEqual(keys(mcq('Use SNMPv3 over IPv6', 'x'), g), ['SNMP', 'IP']);
+  assert.deepStrictEqual(keys(mcq('CAst VLANS 3DES IPS SNMPx', 'x'), g), []);
+  assert.deepStrictEqual(keys(mcq("The CA's key, CRL/OCSP, WPA3-Enterprise", 'x'), { CA: 'Certificate Authority', CRL: 'Certificate Revocation List', OCSP: 'Online Certificate Status Protocol', WPA3: 'Wi-Fi Protected Access 3' }), ['CA', 'CRL', 'OCSP', 'WPA3']);
+});
+t('acronymsIn: regex-special keys', () => {
+  const g = { 'S/MIME': 'Secure/Multipurpose Internet Mail Extensions', 'ATT&CK': 'Adversarial Tactics, Techniques, and Common Knowledge',
+    'TCP/IP': 'Transmission Control Protocol/Internet Protocol', 'PCI DSS': 'Payment Card Industry Data Security Standard', '802.1X': 'Port-based NAC', 'A.B': 'dot test' };
+  assert.deepStrictEqual(keys(mcq('S/MIME, MITRE ATT&CK, TCP/IP, PCI DSS and 802.1X.', 'x'), g), ['S/MIME', 'ATT&CK', 'TCP/IP', 'PCI DSS', '802.1X']);
+  assert.deepStrictEqual(keys(mcq('AxB and 802a1X', 'x'), g), []);
+});
+t('acronymsIn: shorter key inside a longer one is dropped only when the longer expansion covers it', () => {
+  const g = { AES: 'Advanced Encryption Standard', 'AES-256': 'Advanced Encryption Standard 256-bit', USB: 'Universal Serial Bus', 'USB OTG': 'USB On-The-Go' };
+  assert.deepStrictEqual(keys(mcq('Use AES-256', 'x'), g), ['AES-256']);
+  assert.deepStrictEqual(keys(mcq('Use AES-256', 'AES is symmetric'), g), ['AES-256', 'AES']);
+  assert.deepStrictEqual(keys(mcq('A USB OTG cable', 'x'), g), ['USB OTG', 'USB']);
+});
+t('acronymsIn: suppression uses alternates, ignores hyphen/space, skips single-word expansions', () => {
+  const g = { SAN: 'Storage Area Network (also Subject Alternative Name)', MFA: 'Multifactor Authentication', IaC: 'Infrastructure as Code',
+    TXT: 'Text (DNS record)', TAP: 'Test Access Point (network tap)', DB: 'Database' };
+  assert.deepStrictEqual(keys(mcq('Subject alternative name (SAN) entries', 'x'), g), []);
+  assert.deepStrictEqual(keys(mcq('Enable MFA', 'multi-factor authentication helps'), g), []);
+  assert.deepStrictEqual(keys(mcq('Drift in IaC', 'infrastructure-as-code templates'), g), []);
+  assert.deepStrictEqual(keys(mcq('Many TXT queries', 'the text of a DNS record'), g), ['TXT']);
+  assert.deepStrictEqual(keys(mcq('Network TAP', 'a network tap copies'), g), ['TAP']);
+  assert.deepStrictEqual(keys(mcq('The DB server', 'database'), g), ['DB']);
+});
+t('acronymsIn: in-place glossary mutation invalidates the cache', () => {
+  const g = { CA: 'Certificate Authority' };
+  assert.deepStrictEqual(keys(mcq('CA and CRL', 'x'), g), ['CA']);
+  g.CRL = 'Certificate Revocation List';
+  assert.deepStrictEqual(keys(mcq('CA and CRL', 'x'), g), ['CA', 'CRL']);
+  g.CA = 'Changed';
+  assert.strictEqual(E.acronymsIn(mcq('CA', 'x'), g)[0].expansion, 'Changed');
+  delete g.CA;
+  assert.deepStrictEqual(keys(mcq('CA and CRL', 'x'), g), ['CRL']);
+});
+t('UI.acronyms escapes keys and expansions', () => {
+  const vm = require('vm'), fs = require('fs'), path = require('path');
+  const ctx = { window: {} };
+  const UI = vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../js/ui.js'), 'utf8') + '\n;UI', ctx);
+  assert.strictEqual(UI.acronyms([]), '');
+  assert.strictEqual(UI.acronyms(null), '');
+  const h = UI.acronyms([{ key: 'X<b>&', expansion: '<img src=x onerror=alert(1)> "q" \'s' }]);
+  assert(!/<img|<b>/.test(h), h);
+  assert(h.includes('X&lt;b&gt;&amp;') && h.includes('&lt;img src=x onerror=alert(1)&gt; &quot;q&quot; &#39;s'), h);
+});
 console.log(process.exitCode ? 'FAILED' : `all ${n} tests passed`);

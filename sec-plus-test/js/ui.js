@@ -16,6 +16,14 @@ var UI = (function () {
     return 'Module';
   }
 
+  /* list: [{key, expansion}] from Engine.acronymsIn; empty -> nothing */
+  function acronyms(list) {
+    if (!list || !list.length) return '';
+    return '<div class="acronyms"><span class="acronyms-label">Acronyms</span> <dl>' + list.map(function (a) {
+      return '<div><dt>' + esc(a.key) + '</dt><dd>' + esc(a.expansion) + '</dd></div>';
+    }).join(' ') + '</dl></div>';
+  }
+
   function home(c) {
     var h = '<h1>Security+ SY0-701 Practice</h1>';
     if (c.session) {
@@ -125,7 +133,7 @@ var UI = (function () {
       h += '<div class="feedback ' + (r.correct ? 'ok' : (r.points > 0 ? 'part' : 'bad')) + '" role="status"><strong>' +
         (r.correct ? 'Correct' : (r.points > 0 ? 'Partially correct (' + pct(r.points) + ')' : 'Incorrect')) + '</strong>';
       if (isPbq) h += PBQ.review(q, c.answer, s.id);
-      h += '<p>' + esc(q.explanation) + '</p><p class="muted">Objective ' + esc(q.objective) + ': ' + esc(objTitle(q.objective)) + '</p></div>';
+      h += '<p>' + esc(q.explanation) + '</p>' + acronyms(c.acro) + '<p class="muted">Objective ' + esc(q.objective) + ': ' + esc(objTitle(q.objective)) + '</p></div>';
     }
     h += '</article><div class="row actions">';
     h += '<button class="btn" data-act="prev"' + (c.idx === 0 ? ' disabled' : '') + '>Prev</button>';
@@ -176,7 +184,7 @@ var UI = (function () {
         });
         h += '</ul>';
       }
-      h += '<p>' + esc(q.explanation) + '</p></article>';
+      h += '<p>' + esc(q.explanation) + '</p>' + acronyms(it.acro) + '</article>';
     });
     return h;
   }
@@ -205,6 +213,8 @@ var UI = (function () {
     var s = c.settings;
     return back() + '<h1>Settings</h1><div class="panel"><h2>Timer</h2><label class="choice"><input type="checkbox" data-set="strictTimer"' + (s.strictTimer ? ' checked' : '') +
       '> <span>Strict timer (clock keeps running while the tab is hidden)</span></label></div>' +
+      '<div class="panel"><h2>Reviews</h2><label class="choice"><input type="checkbox" data-set="showAcronyms"' + (s.showAcronyms !== false ? ' checked' : '') +
+      '> <span>Show acronym expansions in reviews</span></label></div>' +
       '<div class="panel"><h2>Theme</h2><fieldset class="inline">' + ['auto', 'light', 'dark'].map(function (t) { return radio('theme', t, t[0].toUpperCase() + t.slice(1), s.theme === t); }).join('') + '</fieldset></div>' +
       '<div class="panel"><h2>Data</h2><p class="muted">Everything is stored in this browser only. Export to back up or move to another device.</p>' +
       '<div class="row"><button class="btn" data-act="export">Export JSON</button></div>' +
@@ -215,5 +225,5 @@ var UI = (function () {
   }
 
   function notFound() { return back() + '<h1>Not found</h1>'; }
-  return { esc: esc, home: home, moduleSetup: moduleSetup, finalSetup: finalSetup, drillSetup: drillSetup, quiz: quiz, results: results, history: history, settings: settings, notFound: notFound, sessionLabel: sessionLabel };
+  return { esc: esc, home: home, moduleSetup: moduleSetup, finalSetup: finalSetup, drillSetup: drillSetup, quiz: quiz, acronyms: acronyms, results: results, history: history, settings: settings, notFound: notFound, sessionLabel: sessionLabel };
 })();

@@ -244,3 +244,14 @@ td.barcell { min-width: 90px; width: 22%; }
 }
 @media (prefers-reduced-motion: no-preference) { .opt, .btn, .card, .cell { transition: border-color .12s, background-color .12s, box-shadow .12s; } }
 @media print { .site-header, .actions, .btn, .filters { display: none; } .panel, .card { box-shadow: none; } }
+
+/* acronym glossary under explanations */
+.acronyms { margin: var(--s3) 0 0; font-size: .8125rem; color: var(--muted); line-height: 1.5; }
+.acronyms-label { text-transform: uppercase; letter-spacing: .06em; font-size: .7rem; font-weight: 600; margin-right: .4em; }
+.acronyms dl { display: inline; margin: 0; }
+.acronyms dl > div { display: inline; }
+.acronyms dl > div + div::before { content: "\00b7\00a0"; } /* pairs are joined by a real space in the HTML: a line may break only before the dot */
+.acronyms dt, .acronyms dd { display: inline; margin: 0; }
+.acronyms dt { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight: 600; color: var(--text, inherit); }
+/* nbsp around the dash: a line never breaks between a key and its expansion, only inside the expansion or between pairs */
+.acronyms dd::before { content: "\00a0\2014\00a0"; }

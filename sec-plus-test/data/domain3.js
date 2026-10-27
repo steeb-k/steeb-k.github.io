@@ -57,7 +57,7 @@ window.SEC_BANK.push(
     question: "A retailer uses a serverless function platform to process uploaded images. Which of the following security responsibilities remains with the retailer?",
     options: ["Managing the physical hosts","Securing the function code and its permissions","Patching the underlying operating system","Hardening the container runtime"],
     answer: [1],
-    explanation: "In serverless the provider manages the OS, runtime, and hosts; the customer remains responsible for code quality, secrets handling, and the IAM permissions granted to functions.",
+    explanation: "In serverless the provider manages the OS, runtime, and hosts; the customer remains responsible for the function code, secrets handling, the IAM permissions granted to functions, and the data they process.",
     difficulty: 2,
     tags: ["serverless","shared responsibility"]
   },
@@ -969,7 +969,7 @@ window.SEC_BANK.push(
     question: "A company needs a recovery site that is fully equipped with hardware, software, and current data replication so it can take over almost immediately after a disaster. Which of the following site types BEST meets this requirement?",
     options: ["Warm site","Hot site","Cold site","Mobile site"],
     answer: [1],
-    explanation: "A hot site is a fully provisioned, near-real-time replica that can take over within minutes or hours. Cold sites have only space and utilities, and warm sites require some setup and data restoration.",
+    explanation: "A hot site is a fully provisioned, near-real-time replica that can take over within minutes. Cold sites have only space and utilities, and warm sites require some setup and data restoration.",
     difficulty: 1,
     tags: ["hot site","site considerations"]
   },

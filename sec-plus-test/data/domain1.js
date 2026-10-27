@@ -62,7 +62,7 @@ window.SEC_BANK.push(
     question: "A security architect is selecting controls that stop unauthorized access BEFORE it occurs. Which of the following are preventive controls? Choose TWO.",
     options: ["Access control vestibule (mantrap)", "Intrusion detection system", "Weekly review of camera recordings", "Role-based access control", "Restoring a database from backup"],
     answer: [0, 3],
-    explanation: "A mantrap physically blocks unauthorized entry and RBAC restricts permissions before access is granted, so both are preventive. IDS and recording reviews are detective, and a restore is corrective.",
+    explanation: "An access control vestibule (mantrap) physically blocks unauthorized entry and RBAC restricts permissions before access is granted, so both are preventive. IDS and recording reviews are detective, and a restore is corrective.",
     difficulty: 2, tags: ["control types", "preventive"]
   },
   {
@@ -78,7 +78,7 @@ window.SEC_BANK.push(
     question: "A data center installs badge readers on the doors to its server room so that only authorized staff can enter. Which of the following BEST describes this control?",
     options: ["Physical and detective", "Technical and corrective", "Physical and preventive", "Operational and directive"],
     answer: [2],
-    explanation: "A badge reader on a door is a physical control that prevents unauthorized entry. It is not corrective, and it is enforced by a mechanism rather than being a directive procedure.",
+    explanation: "A badge reader on a door is a physical control that prevents unauthorized entry. Its entry logs have a detective use too (one category, possibly several types), but the stated purpose is keeping unauthorized people out, so preventive is BEST. It is not corrective, and it is enforced by a mechanism rather than being a directive procedure.",
     difficulty: 2, tags: ["control categories", "control types", "physical controls"]
   },
   {
@@ -132,9 +132,9 @@ window.SEC_BANK.push(
   {
     id: "d1-017", domain: 1, objective: "1.1", type: "multi",
     question: "After a malware outbreak, which of the following actions are CORRECTIVE controls? Choose TWO.",
-    options: ["Reimaging an infected workstation", "Restoring a database from backup", "Installing a mantrap on the data center door", "Posting warning signs about monitored areas", "Reviewing firewall logs weekly"],
+    options: ["Reimaging an infected workstation", "Restoring a database from backup", "Installing an access control vestibule on the data center door", "Posting warning signs about monitored areas", "Reviewing firewall logs weekly"],
     answer: [0, 1],
-    explanation: "Reimaging and restoring return systems to a known-good state after an incident, which is corrective. A mantrap is preventive, signs are deterrent, and log review is detective.",
+    explanation: "Reimaging and restoring return systems to a known-good state after an incident, which is corrective. An access control vestibule is preventive, warning signs are deterrent, and log review is detective.",
     difficulty: 2, tags: ["control types", "corrective"]
   },
   {

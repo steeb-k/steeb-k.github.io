@@ -510,7 +510,7 @@ window.SEC_BANK.push(
     "answer": [
       0
     ],
-    "explanation": "An exception (or exemption) is a formally approved, documented, time-bound deviation from a requirement, which is a form of risk acceptance. Transference shifts impact to a third party, avoidance stops the activity, and a threshold is a level that triggers action.",
+    "explanation": "An exception is a formally approved, documented, time-bound deviation from a requirement with compensating controls, which is a form of risk acceptance; an exemption would instead release the system from the requirement altogether. Transference shifts impact to a third party, avoidance stops the activity, and a threshold is a level that triggers action.",
     "difficulty": 1,
     "tags": [
       "exception",
@@ -862,7 +862,7 @@ window.SEC_BANK.push(
       0,
       1
     ],
-    "explanation": "RTO is the maximum acceptable downtime, and RPO is the maximum tolerable data loss measured in time. MTTR is an observed repair metric, not an objective.",
+    "explanation": "RTO is the target time to restore the system after an outage (it must fit within the maximum tolerable downtime, since MTD = RTO + WRT), and RPO is the maximum tolerable data loss measured in time. MTTR is an observed repair metric, not an objective.",
     "difficulty": 2,
     "tags": [
       "RTO",

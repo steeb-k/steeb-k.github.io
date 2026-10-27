@@ -254,7 +254,7 @@ window.SEC_BANK.push(
     question: "A critical vulnerability exists in a legacy medical imaging system whose vendor will not release a patch. The system must remain in service. Which of the following is the BEST remediation approach?",
     options: ["Apply compensating controls such as segmentation and document a formal exception","Ignore the finding because the system is old","Immediately uninstall the operating system","Disable the vulnerability scanner for that subnet"],
     answer: [0],
-    explanation: "When patching is not possible, compensating controls such as segmentation reduce exposure, and a documented exception/exemption records management's acceptance of the residual risk within its risk tolerance. Ignoring the issue, removing the OS, or hiding it from scans is not a valid response.",
+    explanation: "When patching is not possible, compensating controls such as segmentation reduce exposure, and a documented exception (an approved, time-boxed deviation with compensating controls) records management's acceptance of the residual risk within its risk tolerance. Ignoring the issue, removing the OS, or hiding it from scans is not a valid response.",
     difficulty: 2, tags: ["remediation","compensating controls","exception"]
   },
   {

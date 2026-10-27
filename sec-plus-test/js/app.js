@@ -61,7 +61,9 @@
     if (el) {
       el.textContent = timerText();
       var t = s.timer;
-      el.classList.toggle('low', t.limitMs != null && Engine.Timer.remaining(t, now()) < 5 * 60000);
+      var rem = t.limitMs != null ? Engine.Timer.remaining(t, now()) : Infinity;
+      el.classList.toggle('low', rem < 10 * 60000 && rem >= 2 * 60000);
+      el.classList.toggle('crit', rem < 2 * 60000);
     }
   }
   setInterval(tick, 500);
@@ -105,7 +107,18 @@
       default: html = UI.notFound();
     }
     syncTimer();
+    markNav(r.name);
     paint(html, key);
+    if (r.name === 'quiz') tick(); /* apply the low/crit timer colour immediately, not on the next 500ms tick */
+  }
+
+  /* header nav: mark the link for the current route (History/Settings) with aria-current="page" */
+  function markNav(name) {
+    var links = document.querySelectorAll('.site-header nav a');
+    for (var i = 0; i < links.length; i++) {
+      var on = (links[i].getAttribute('href') || '').replace(/^#\/?/, '') === name;
+      if (on) links[i].setAttribute('aria-current', 'page'); else links[i].removeAttribute('aria-current');
+    }
   }
 
   function paint(html, key) {

@@ -87,9 +87,15 @@ var PBQ = (function () {
     return undefined;
   }
 
+  /* Correct/incorrect mark as inline SVG (no font glyph fallback, no emoji); colour comes from .mark.ok / .mark.bad. */
+  function mark(good) {
+    return '<span class="mark ' + (good ? 'ok' : 'bad') + '" role="img" aria-label="' + (good ? 'correct' : 'incorrect') + '"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false">' +
+      '<path d="' + (good ? 'M3 8.5l3.2 3.2L13 4.5' : 'M4.5 4.5l7 7M11.5 4.5l-7 7') + '" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
+  }
+
   /* Read-only graded view: your answer vs correct, per cell. */
   function review(q, answer, seed) {
-    var h = '<div class="pbq-review">', ok = '<span class="mark ok" aria-label="correct">&#10003;</span>', bad = '<span class="mark bad" aria-label="incorrect">&#10007;</span>';
+    var h = '<div class="pbq-review">', ok = mark(true), bad = mark(false);
     if (q.type === 'match') {
       h += '<ul>';
       q.left.forEach(function (l, i) {
@@ -123,5 +129,5 @@ var PBQ = (function () {
     return h + '</div>';
   }
 
-  return { render: render, handle: handle, review: review, currentOrder: currentOrder };
+  return { render: render, handle: handle, review: review, currentOrder: currentOrder, mark: mark };
 })();

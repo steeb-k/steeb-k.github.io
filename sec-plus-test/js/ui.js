@@ -25,7 +25,7 @@ var UI = (function () {
   }
 
   function home(c) {
-    var h = '<h1>Security+ SY0-701 Practice</h1>';
+    var h = '<h1>Security+ SY0-701 practice</h1>';
     if (c.session) {
       var s = c.session;
       h += '<section class="banner" role="status"><div><strong>Resume in-progress ' + esc(sessionLabel(s)) + '</strong><br><span class="muted">Question ' +
@@ -97,8 +97,8 @@ var UI = (function () {
     });
     var n = { a: 0, u: 0, f: 0 };
     c.cells.forEach(function (x) { if (x.answered) n.a++; else n.u++; if (x.flagged) n.f++; });
-    return h + '</div><p class="legend"><span class="sw answered" aria-hidden="true"></span>Answered (' + n.a + ')<span class="sw unanswered" aria-hidden="true"></span>Unanswered (' + n.u + ')' +
-      '<span class="sw flagged" aria-hidden="true"></span>Flagged (' + n.f + ')</p>';
+    return h + '</div><p class="legend"><span class="lg"><span class="sw answered" aria-hidden="true"></span>Answered (' + n.a + ')</span><span class="lg"><span class="sw unanswered" aria-hidden="true"></span>Unanswered (' + n.u + ')</span>' +
+      '<span class="lg"><span class="sw flagged" aria-hidden="true"></span>Flagged (' + n.f + ')</span></p>';
   }
 
   function quiz(c) {
@@ -124,7 +124,7 @@ var UI = (function () {
         if (c.locked) { var isA = q.answer.indexOf(orig) >= 0; if (isA) cls += ' correct'; else if (on) cls += ' wrong'; }
         if (on) cls += ' selected';
         h += '<label class="' + cls + '" for="o' + orig + '"><input id="o' + orig + '" type="' + (q.type === 'multi' ? 'checkbox' : 'radio') + '" name="o" value="' + orig + '"' +
-          (on ? ' checked' : '') + (c.locked ? ' disabled' : '') + ' data-act="opt"><span class="key">' + (pos + 1) + '</span><span class="otext">' + esc(q.options[orig]) + '</span></label>';
+          (on ? ' checked' : '') + (c.locked ? ' disabled' : '') + ' data-act="opt"><span class="key">' + (pos + 1) + '</span><span class="otext">' + esc(q.options[orig]) + '</span>' + (c.locked && /correct|wrong/.test(cls) ? PBQ.mark(cls.indexOf('correct') >= 0) : '') + '</label>';
       });
       h += '</div>';
     }
@@ -179,7 +179,7 @@ var UI = (function () {
         h += '<p class="stem">' + esc(q.question) + '</p><ul class="rev-opts">';
         q.options.forEach(function (o, i) {
           var mine = (it.answer || []).indexOf(i) >= 0, right = q.answer.indexOf(i) >= 0;
-          h += '<li class="' + (right ? 'is-right' : '') + (mine && !right ? ' is-wrong' : '') + '">' + (right ? '<span class="mark ok">&#10003;</span> ' : (mine ? '<span class="mark bad">&#10007;</span> ' : '')) + esc(o) +
+          h += '<li class="' + (right ? 'is-right' : '') + (mine && !right ? ' is-wrong' : '') + '">' + (right ? PBQ.mark(true) + ' ' : (mine ? PBQ.mark(false) + ' ' : '')) + esc(o) +
             (mine ? ' <em class="muted">(your answer)</em>' : '') + '</li>';
         });
         h += '</ul>';
@@ -203,7 +203,7 @@ var UI = (function () {
     h += '</tbody></table></div><h2>Final exam</h2><p>' + (c.final.n ? 'Attempts: <strong>' + c.final.n + '</strong> &middot; Best scaled: <strong>' + c.final.best + '</strong> &middot; Passes: <strong>' + c.final.passes + '</strong>' : 'No final exam attempts yet.') + '</p>';
     h += '<h2>Attempts</h2><div class="table-wrap"><table><thead><tr><th>Date</th><th>Type</th><th>Domain</th><th class="num">Score</th><th class="barcell"><span class="sr">Bar</span></th><th class="num">Scaled</th><th>Result</th><th class="num">Time</th><th><span class="sr">Details</span></th></tr></thead><tbody>';
     c.attempts.forEach(function (a) {
-      h += '<tr><td>' + esc(date(a.finishedAt)) + '</td><td>' + typeLabel(a) + (a.mode ? ' <span class="muted">(' + a.mode + ')</span>' : '') + '</td><td>' + (a.domain ? 'D' + a.domain : '&ndash;') + '</td><td class="num">' + pct(a.pct) + '</td><td class="barcell">' +
+      h += '<tr><td class="nowrap">' + esc(date(a.finishedAt)) + '</td><td>' + typeLabel(a) + (a.mode ? ' <span class="muted">(' + a.mode + ')</span>' : '') + '</td><td>' + (a.domain ? 'D' + a.domain : '&ndash;') + '</td><td class="num">' + pct(a.pct) + '</td><td class="barcell">' +
         bar(a.pct, a.pass ? 'good' : '') + '</td><td class="num">' + a.scaled + '</td><td>' + (a.pass ? '<span class="pill pass">Pass</span>' : '<span class="pill fail">Fail</span>') + '</td><td class="num">' + fmtDur(a.durationMs) + '</td><td><a href="#/results/' + esc(a.id) + '">View</a></td></tr>';
     });
     return h + '</tbody></table></div>';

@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Palette sampler</title>
+<link rel="stylesheet" href="../../fonts/ibm-plex/plex.css">
+<style>
+  :root { --font-sans: "IBM Plex Sans", system-ui, sans-serif; --font-mono: "IBM Plex Mono", ui-monospace, monospace; }
+  html, body { margin: 0; background: #0e0e0f; color: #ddd; font: 15px/1.5 var(--font-sans); }
+  .controls { position: sticky; top: 0; z-index: 2; background: #0e0e0f; border-bottom: 1px solid #222; padding: 12px 20px; }
+  .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 6px 0; }
+  .row > .lbl { width: 90px; font-size: 11.5px; letter-spacing: .07em; text-transform: uppercase; color: #888; }
+  .chip { cursor: pointer; border: 1px solid #333; border-radius: 999px; padding: 4px 12px; font-size: 13px; color: #ccc; background: #161617; display: inline-flex; align-items: center; gap: 7px; }
+  .chip input { display: none; }
+  .chip .sw { width: 14px; height: 14px; border-radius: 50%; border: 1px solid #0006; }
+  .chip.on { border-color: #ddd; color: #fff; background: #222; }
+  .code { font: 13px var(--font-mono); color: #aaa; margin-left: auto; }
+  .ratios { font: 12px var(--font-mono); color: #888; }
+
+  /* ---------- preview, driven entirely by tokens set on #pv ---------- */
+  #pv { --s: 8px; padding: 0 0 48px; background: var(--bg-0); color: var(--ink); font-family: var(--font-sans); }
+  #pv .hdr { background: var(--bg-1); border-bottom: 1px solid var(--line); height: 58px; display: flex; align-items: center; }
+  #pv .wrap { max-width: 920px; margin: 0 auto; padding: 0 16px; width: 100%; box-sizing: border-box; }
+  #pv .hdr .wrap { display: flex; align-items: center; justify-content: space-between; }
+  .pill { display: inline-flex; border-radius: 999px; overflow: hidden; box-shadow: 0 0 0 1.5px var(--ink); font-weight: 600; font-size: 14px; line-height: 1; background: var(--ink); }
+  .pill .l { background: var(--ink); color: var(--bg-0); padding: 5px 10px 5px 12px; }
+  .pill .r { background: var(--bg-0); color: var(--ink); padding: 5px 12px 5px 10px; font-family: var(--font-mono); }
+  #pv nav a { color: var(--ink-2); margin-left: 16px; text-decoration: none; }
+  #pv h1 { font-size: 26px; font-weight: 600; letter-spacing: -0.01em; margin: 28px 0 16px; }
+  #pv .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  #pv .card { background: var(--bg-1); border: 1px solid var(--line); border-radius: 10px; padding: 18px; }
+  #pv .card .top { display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
+  #pv .card .d { color: var(--accent); font-weight: 600; font-family: var(--font-mono); }
+  #pv .card h3 { font-size: 16px; margin: 10px 0 6px; font-weight: 600; }
+  #pv .meta { color: var(--ink-2); font-size: 13.5px; }
+  .badge { border-radius: 6px; padding: 2px 8px; font-size: 12px; font-weight: 500; }
+  .badge.ok { background: var(--ok-tint); color: var(--ok); } .badge.warn { background: var(--warn-tint); color: var(--warn); }
+  .badge.bad { background: var(--bad-tint); color: var(--bad); } .badge.none { background: var(--bg-3); color: var(--ink-2); }
+  #pv .q { margin-top: 24px; }
+  #pv .qbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  #pv .qn { font-family: var(--font-mono); font-weight: 500; }
+  #pv .tag { background: var(--bg-3); color: var(--ink-2); border-radius: 6px; padding: 2px 8px; font-size: 12px; margin-left: 8px; font-family: var(--font-mono); }
+  #pv .timer { font-family: var(--font-mono); font-size: 18px; }
+  #pv .stem { font-size: 17px; margin: 0 0 14px; }
+  .opt { display: flex; align-items: center; gap: 12px; background: var(--bg-2); border: 1px solid var(--line); border-radius: 8px; padding: 13px 14px; margin-bottom: 8px; }
+  .opt .k { font-family: var(--font-mono); font-size: 12px; background: var(--bg-3); color: var(--ink-2); border-radius: 6px; padding: 2px 7px; }
+  .opt.sel { border-color: var(--accent); background: var(--accent-tint); }
+  .opt.ok { border-color: var(--ok); background: var(--ok-tint); } .opt.bad { border-color: var(--bad); background: var(--bad-tint); }
+  .opt .m { margin-left: auto; font-weight: 600; } .opt.ok .m { color: var(--ok); } .opt.bad .m { color: var(--bad); }
+  .fb { border-left: 3px solid var(--bad); background: var(--bad-tint); border-radius: 8px; padding: 14px 18px; margin-top: 12px; }
+  .fb b { color: var(--bad); display: block; margin-bottom: 6px; }
+  .fb .obj { color: var(--ink-2); font-size: 13px; margin-top: 8px; }
+  .acr { margin-top: 8px; font-size: 13px; color: var(--ink-2); } .acr .lab { font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-3); margin-right: 8px; }
+  .acr code { font-family: var(--font-mono); font-weight: 600; color: var(--ink); }
+  #pv .btns { display: flex; gap: 8px; margin-top: 16px; align-items: center; }
+  .btn { border-radius: 8px; padding: 9px 16px; font-weight: 500; font-size: 14px; border: 1px solid var(--line-strong); color: var(--ink); background: transparent; font-family: inherit; }
+  .btn.p { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+  .btn.dis { opacity: .45; }
+  .cells { display: flex; gap: 6px; margin-left: auto; }
+  .cell { width: 32px; height: 32px; border-radius: 6px; display: grid; place-items: center; font: 12px var(--font-mono); border: 1px dashed var(--line-strong); color: var(--ink-2); }
+  .cell.a { border: 1px solid var(--accent); background: var(--accent-tint); color: var(--ink); }
+  .cell.f { border: 1px solid var(--warn); color: var(--ink); }
+  .cell.c { outline: 2px solid var(--accent); outline-offset: 1px; }
+  #pv table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
+  #pv th { text-align: left; font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-3); padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  #pv td { padding: 10px; border-bottom: 1px solid var(--line); } #pv td.n { text-align: right; font-family: var(--font-mono); }
+  .bar { height: 6px; background: var(--bg-3); border-radius: 3px; width: 160px; } .bar i { display: block; height: 100%; border-radius: 3px; background: var(--accent); }
+  .mini { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; padding: 20px; background: #0e0e0f; }
+  .mini .m { cursor: pointer; border-radius: 10px; padding: 14px; border: 1px solid var(--line); background: var(--bg-0); color: var(--ink); font-family: var(--font-sans); }
+  .mini .m .c2 { background: var(--bg-1); border: 1px solid var(--line); border-radius: 8px; padding: 10px; margin-top: 8px; }
+  .mini .m .o { background: var(--bg-2); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; font-size: 12px; margin-top: 6px; }
+  .mini .m .o.k { border-color: var(--ok); background: var(--ok-tint); }
+  .mini .m .nm { font-size: 12px; color: var(--ink-2); font-family: var(--font-mono); }
+  .mini .m.on { outline: 2px solid #fff; }
+</style>
+</head>
+<body>
+<div class="controls">
+  <div class="row"><span class="lbl">Grey tone</span><span id="bases"></span><span class="code" id="code"></span></div>
+  <div class="row"><span class="lbl">Depth</span><span id="depths"></span></div>
+  <div class="row"><span class="lbl">Text</span><span id="inks"></span><span class="ratios" id="ratios"></span></div>
+  <div class="row"><span class="lbl">Accent</span><span id="accents"></span></div>
+  <div class="row"><span class="lbl">Status</span><span id="statuses"></span></div>
+</div>
+
+<div id="pv">
+  <div class="hdr"><div class="wrap"><span class="pill"><span class="l">Sec+</span><span class="r">701</span></span><nav><a>History</a><a>Settings</a></nav></div></div>
+  <div class="wrap">
+    <h1>Security+ SY0-701 practice</h1>
+    <div class="grid">
+      <div class="card"><div class="top"><span class="d">D1</span><span class="badge ok">Ready</span></div><h3>General Security Concepts</h3><div class="meta">12% of exam · 100 questions</div><div class="meta" style="margin-top:14px">Last score: <b style="color:var(--ink)">95%</b></div></div>
+      <div class="card"><div class="top"><span class="d">D2</span><span class="badge warn">Almost</span></div><h3>Threats, Vulnerabilities, and Mitigations</h3><div class="meta">22% of exam · 100 questions</div><div class="meta" style="margin-top:14px">Last score: <b style="color:var(--ink)">84%</b></div></div>
+      <div class="card"><div class="top"><span class="d">D3</span><span class="badge bad">Needs work</span></div><h3>Security Architecture</h3><div class="meta">18% of exam · 100 questions</div><div class="meta" style="margin-top:14px">Last score: <b style="color:var(--ink)">61%</b></div></div>
+    </div>
+    <div class="q">
+      <div class="qbar"><span><span class="qn">Q 12 / 25</span><span class="tag">D4 · 4.8</span></span><span><span class="timer">47:12</span></span></div>
+      <div class="card">
+        <p class="stem">During incident response, which phase comes immediately after containment?</p>
+        <div class="opt"><span class="k">1</span>Lessons learned</div>
+        <div class="opt ok"><span class="k">2</span>Eradication<span class="m">✓</span></div>
+        <div class="opt sel"><span class="k">3</span>Preparation (selected, unchecked)</div>
+        <div class="opt bad"><span class="k">4</span>Detection<span class="m">✗</span></div>
+        <div class="fb"><b>Incorrect</b>The SY0-701 order is preparation, detection, analysis, containment, eradication, recovery, lessons learned. Detection and analysis precede containment.<div class="obj">Objective 4.8: Explain appropriate incident response activities</div>
+          <div class="acr"><span class="lab">Acronyms</span><code>IR</code> — Incident Response · <code>RCA</code> — Root Cause Analysis</div></div>
+      </div>
+      <div class="btns"><span class="btn dis">Prev</span><span class="btn">Flag</span><span class="btn">Review</span><span class="btn p">Next</span>
+        <span class="cells"><span class="cell a">1</span><span class="cell a">2</span><span class="cell f">3</span><span class="cell">4</span><span class="cell c">5</span></span></div>
+      <table><tr><th>Domain</th><th style="text-align:right">Points</th><th style="text-align:right">%</th><th></th></tr>
+        <tr><td>1. General Security Concepts</td><td class="n">9</td><td class="n">90%</td><td><span class="bar"><i style="width:90%"></i></span></td></tr>
+        <tr><td>4. Security Operations</td><td class="n">17</td><td class="n">71%</td><td><span class="bar"><i style="width:71%"></i></span></td></tr></table>
+    </div>
+  </div>
+</div>
+
+<div class="mini" id="mini"></div>
+
+<script>
+const BASES = {
+  graphite: { name: 'Graphite (neutral)', h: [0, 0] },      // pure grey
+  slate:    { name: 'Slate (slightly cool)', h: [220, 0.06] },
+  stone:    { name: 'Stone (slightly warm)', h: [35, 0.05] },
+  zinc:     { name: 'Zinc (faintly blue)', h: [230, 0.03] },
+  current:  { name: 'Current (blue-grey)', h: [228, 0.12] },
+};
+const DEPTHS = {
+  standard: { name: 'Standard', l: [12, 16, 20, 25, 23, 31] },     // bg0 bg1 bg2 bg3 line lineStrong lightness %
+  deep:     { name: 'Deep',     l: [7, 11, 15, 20, 19, 27] },
+  black:    { name: 'Black',    l: [3, 8, 12, 17, 16, 24] },
+  soft:     { name: 'Soft',     l: [15, 19, 23, 28, 26, 34] },
+};
+const INKS = {
+  soft:   { name: 'Soft (current)',  ink: [0, 0, 88], ink2: [0, 0, 68], ink3: [0, 0, 56] },
+  bright: { name: 'Bright',          ink: [0, 0, 94], ink2: [0, 0, 74], ink3: [0, 0, 60] },
+  white:  { name: 'White',           ink: [0, 0, 100], ink2: [0, 0, 78], ink3: [0, 0, 62] },
+  brightwarm: { name: 'Bright warm', ink: [40, 0.18, 94], ink2: [40, 0.08, 74], ink3: [40, 0.06, 60] },
+  brightcool: { name: 'Bright cool', ink: [220, 0.18, 94], ink2: [220, 0.08, 74], ink3: [220, 0.06, 60] },
+};
+const ACCENTS = {
+  lavender:   { name: 'Lavender', c: '#b8b4e6', hi: '#cfcaf5' },
+  periwinkle: { name: 'Periwinkle', c: '#9fb3e8', hi: '#b8c8f2' },
+  silver:     { name: 'Silver (neutral)', c: '#c9ccd3', hi: '#dde0e6' },
+  sand:       { name: 'Sand', c: '#dcc39f', hi: '#e9d6b8' },
+  mauve:      { name: 'Mauve', c: '#d2a8c6', hi: '#e2c2d8' },
+  teal:       { name: 'Teal', c: '#9ccfcb', hi: '#b6e0dc' },
+  sky:        { name: 'Sky', c: '#9cc3e6', hi: '#b7d6f0' },
+};
+const STATUSES = {
+  pastel: { name: 'Pastel (current)', ok: '#a8d5b5', bad: '#e6a3a8', warn: '#e8cf9a', t: .13 },
+  vivid:  { name: 'Brighter', ok: '#8fe0a6', bad: '#f29aa1', warn: '#f2d383', t: .14 },
+  muted:  { name: 'Muted', ok: '#9fc4a9', bad: '#d4a0a4', warn: '#d6c398', t: .10 },
+  quiet:  { name: 'Quiet (low tint)', ok: '#a8d5b5', bad: '#e6a3a8', warn: '#e8cf9a', t: .06 },
+};
+const state = { base: 'graphite', depth: 'deep', ink: 'bright', accent: 'lavender', status: 'pastel' };
+try { Object.assign(state, JSON.parse(localStorage.getItem('sampler') || '{}')); } catch (e) {}
+
+function hsl(h, s, l) { // h deg, s 0..1 (fraction of max), l %
+  return `hsl(${h} ${Math.round(s * 100)}% ${l}%)`;
+}
+function hslToHex(h, s, l) {
+  s = s; l = l / 100; const k = n => (n + h / 30) % 12; const a = s * Math.min(l, 1 - l);
+  const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  return '#' + [f(0), f(8), f(4)].map(v => Math.round(v * 255).toString(16).padStart(2, '0')).join('');
+}
+function lum(hex) { const c = hex.replace('#', '').match(/../g).map(x => parseInt(x, 16) / 255).map(v => v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4); return .2126 * c[0] + .7152 * c[1] + .0722 * c[2]; }
+function ratio(a, b) { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return ((x + .05) / (y + .05)).toFixed(1); }
+function tint(hex, a) { const [r, g, b] = hex.replace('#', '').match(/../g).map(x => parseInt(x, 16)); return `rgba(${r},${g},${b},${a})`; }
+
+function tokens(st) {
+  const B = BASES[st.base], D = DEPTHS[st.depth], I = INKS[st.ink], A = ACCENTS[st.accent], S = STATUSES[st.status];
+  const [h, s] = B.h; const L = D.l;
+  const bg = L.map(l => hslToHex(h, s, l));
+  const ink = hslToHex(I.ink[0], I.ink[1], I.ink[2]), ink2 = hslToHex(I.ink2[0], I.ink2[1], I.ink2[2]), ink3 = hslToHex(I.ink3[0], I.ink3[1], I.ink3[2]);
+  return { '--bg-0': bg[0], '--bg-1': bg[1], '--bg-2': bg[2], '--bg-3': bg[3], '--line': bg[4], '--line-strong': bg[5],
+    '--ink': ink, '--ink-2': ink2, '--ink-3': ink3,
+    '--accent': A.c, '--accent-hi': A.hi, '--accent-ink': bg[0], '--accent-tint': tint(A.c, .14),
+    '--ok': S.ok, '--ok-tint': tint(S.ok, S.t), '--bad': S.bad, '--bad-tint': tint(S.bad, S.t), '--warn': S.warn, '--warn-tint': tint(S.warn, S.t) };
+}
+function apply(el, t) { for (const k in t) el.style.setProperty(k, t[k]); }
+
+function chips(id, dict, key) {
+  const box = document.getElementById(id); box.innerHTML = '';
+  for (const k in dict) {
+    const lab = document.createElement('label'); lab.className = 'chip' + (state[key] === k ? ' on' : '');
+    const sw = document.createElement('span'); sw.className = 'sw';
+    const t = tokens({ ...state, [key]: k });
+    sw.style.background = key === 'accent' ? t['--accent'] : key === 'ink' ? t['--ink'] : key === 'status' ? `linear-gradient(90deg,${t['--ok']} 33%,${t['--warn']} 33% 66%,${t['--bad']} 66%)` : t['--bg-1'];
+    lab.append(sw, document.createTextNode(dict[k].name));
+    lab.onclick = () => { state[key] = k; render(); };
+    box.append(lab);
+  }
+}
+function render() {
+  try { localStorage.setItem('sampler', JSON.stringify(state)); } catch (e) {}
+  const t = tokens(state); apply(document.getElementById('pv'), t);
+  chips('bases', BASES, 'base'); chips('depths', DEPTHS, 'depth'); chips('inks', INKS, 'ink'); chips('accents', ACCENTS, 'accent'); chips('statuses', STATUSES, 'status');
+  document.getElementById('code').textContent = `${state.base} / ${state.depth} / ${state.ink} / ${state.accent} / ${state.status}`;
+  document.getElementById('ratios').textContent = `contrast on cards: text ${ratio(t['--ink'], t['--bg-1'])}:1 · muted ${ratio(t['--ink-2'], t['--bg-1'])}:1 · faint ${ratio(t['--ink-3'], t['--bg-1'])}:1 · accent ${ratio(t['--accent'], t['--bg-1'])}:1`;
+  // mini grid: every base × current depth, so you can compare tones side by side
+  const mini = document.getElementById('mini'); mini.innerHTML = '';
+  for (const b in BASES) for (const d of ['standard', 'deep', 'black']) {
+    const m = document.createElement('div'); m.className = 'm' + (state.base === b && state.depth === d ? ' on' : '');
+    apply(m, tokens({ ...state, base: b, depth: d }));
+    m.innerHTML = `<div class="nm">${b} / ${d}</div><div class="c2"><b>Security Architecture</b><div style="font-size:12px;color:var(--ink-2)">18% of exam · 100 questions</div><div class="o">Lessons learned</div><div class="o k">Eradication ✓</div></div>`;
+    m.onclick = () => { state.base = b; state.depth = d; render(); };
+    mini.append(m);
+  }
+}
+render();
+</script>
+</body>
+</html>

@@ -207,6 +207,16 @@ label[for=impfile] { font-size: 13.5px; color: var(--ink-2); }
 .pbq-order li { display: flex; gap: 10px; align-items: center; justify-content: space-between; border: 1px solid var(--line); border-radius: var(--r-btn); padding: 8px 10px 8px 46px; background: var(--bg-2); min-height: 54px; }
 .pbq-order li::before { left: 10px; top: 50%; transform: translateY(-50%); }
 .pbq-item { font-weight: 500; }
+/* Config PBQ: stacked rows, fields wrap so every dropdown is visible at any width */
+.pbq-rows { display: grid; gap: 10px; }
+.pbq-row { border: 1px solid var(--line); border-radius: var(--r-btn); background: var(--bg-2); padding: 10px 12px 12px; }
+.pbq-row-label { font-family: var(--font-mono); font-weight: 500; font-size: 13.5px; color: var(--ink); margin-bottom: 8px; }
+.pbq-fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px 12px; }
+.pbq-field { display: grid; gap: 4px; min-width: 0; }
+.pbq-field > label, .pbq-field-label { font-size: 11.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-3); }
+.pbq-field select { width: 100%; min-width: 0; }
+.pbq-field.fixed .pbq-field-val { padding: 8px 10px; border: 1px dashed var(--line-strong); border-radius: var(--r-btn); color: var(--ink-2); background: var(--bg-1); }
+.pbq-field-val { line-height: 1.4; }
 .pbq-btns { display: flex; gap: 6px; flex: none; }
 .table-wrap { position: relative; overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; border: 1px solid var(--line); border-radius: var(--r-btn); }
 .table-wrap > table { margin: 0; }

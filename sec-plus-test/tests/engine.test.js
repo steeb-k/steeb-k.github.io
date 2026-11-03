@@ -317,4 +317,29 @@ t('UI.acronyms escapes keys and expansions', () => {
   assert(!/<img|<b>/.test(h), h);
   assert(h.includes('X&lt;b&gt;&amp;') && h.includes('&lt;img src=x onerror=alert(1)&gt; &quot;q&quot; &#39;s'), h);
 });
+t('choiceOrder: stable permutation per seed, varies across seeds, used for PBQ dropdowns', () => {
+  const a = E.choiceOrder(6, 'att-1', 'pbq-001', 'right'), b = E.choiceOrder(6, 'att-1', 'pbq-001', 'right'), c = E.choiceOrder(6, 'att-2', 'pbq-001', 'right');
+  assert.deepStrictEqual(a, b);
+  assert.deepStrictEqual([...a].sort((x, y) => x - y), [0, 1, 2, 3, 4, 5]);
+  assert.notDeepStrictEqual(a, c);
+  // across many attempts the displayed order must not be the data order most of the time
+  let identity = 0; for (let i = 0; i < 200; i++) if (E.choiceOrder(5, 'att-' + i, 'pbq-005', 'right').every((v, k) => v === k)) identity++;
+  assert(identity < 10, 'identity order too frequent: ' + identity);
+});
+t('PBQ render: match and config dropdowns use the shuffled order and keep original values', () => {
+  const vm = require('vm'), fs = require('fs'), path = require('path');
+  const ctx = { window: {}, Engine: E };
+  const PBQ = vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../js/pbq.js'), 'utf8') + '\n;PBQ', ctx);
+  const m = { id: 'pbq-900', type: 'match', title: 't', instructions: 'i', left: ['a', 'b', 'c'], right: ['r0', 'r1', 'r2', 'r3'], answer: [0, 1, 2] };
+  const html = PBQ.render(m, null, { seed: 'att-7' });
+  const vals = [...html.matchAll(/<option value="(\d)"[^>]*>(r\d)<\/option>/g)].slice(0, 4).map(x => [x[1], x[2]]);
+  vals.forEach(([v, lab]) => assert.strictEqual('r' + v, lab)); // value still maps to the original index
+  assert.deepStrictEqual(vals.map(x => +x[0]), E.choiceOrder(4, 'att-7', 'pbq-900', 'right'));
+  const cfg = { id: 'pbq-901', type: 'config', title: 't', instructions: 'i', columns: [{ key: 'x', label: 'X', choices: ['p', 'q', 'r'] }, { key: 'y', label: 'Y', choices: ['1', '2'] }],
+    rows: [{ label: 'row', fixed: { y: '2' }, answer: { x: 'q' } }] };
+  const h2 = PBQ.render(cfg, null, { seed: 'att-7' });
+  assert(!/<table/.test(h2) && /pbq-row-label/.test(h2) && /pbq-field fixed/.test(h2), 'config should render stacked rows');
+  const opts = [...h2.matchAll(/<option value="([pqr])"/g)].map(x => x[1]);
+  assert.deepStrictEqual(opts, E.choiceOrder(3, 'att-7', 'pbq-901', 'col:x').map(k => ['p', 'q', 'r'][k]));
+});
 console.log(process.exitCode ? 'FAILED' : `all ${n} tests passed`);

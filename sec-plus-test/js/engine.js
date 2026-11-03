@@ -40,6 +40,11 @@ var Engine = (function () {
   function optionOrder(q, attemptId) {
     return shuffle(range(q.options.length), makeRng(attemptId + ':' + q.id));
   }
+  /* Stable per attemptId+questionId+key permutation of a choice list (PBQ dropdowns), so the
+     displayed order never mirrors the answer key's order in the data file. */
+  function choiceOrder(n, attemptId, qid, key) {
+    return shuffle(range(n), makeRng(attemptId + ':' + qid + ':choice:' + key));
+  }
   /* Stable starting arrangement for an "order" PBQ; never equals the solution. */
   function orderStart(q, attemptId) {
     var o = shuffle(range(q.items.length), makeRng(attemptId + ':' + q.id + ':order'));
@@ -318,7 +323,7 @@ var Engine = (function () {
 
   return {
     hashStr: hashStr, mulberry32: mulberry32, makeRng: makeRng, shuffle: shuffle,
-    optionOrder: optionOrder, orderStart: orderStart,
+    optionOrder: optionOrder, orderStart: orderStart, choiceOrder: choiceOrder,
     pickLeastSeen: pickLeastSeen, pickSpreadPbqs: pickSpreadPbqs, buildSession: buildSession, missedIds: missedIds,
     isAnswered: isAnswered, effectiveAnswer: effectiveAnswer, scoreQuestion: scoreQuestion, scoreSession: scoreSession, scaled: scaled, passed: passed,
     weakestObjectives: weakestObjectives, applyStats: applyStats, markSeen: markSeen, readiness: readiness, READY: READY,

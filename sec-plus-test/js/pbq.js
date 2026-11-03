@@ -19,7 +19,9 @@ var PBQ = (function () {
         var v = answer && answer[i] != null ? answer[i] : '';
         h += '<li><label for="pm' + i + '" class="pbq-left">' + esc(q.left[i]) + '</label><select id="pm' + i + '" data-pbq="match" data-i="' + i + '"' + dis + '>' +
           '<option value="">Select...</option>';
-        for (var j = 0; j < q.right.length; j++) h += '<option value="' + j + '"' + (String(v) === String(j) ? ' selected' : '') + '>' + esc(q.right[j]) + '</option>';
+        Engine.choiceOrder(q.right.length, opt.seed, q.id, 'right').forEach(function (j) {
+          h += '<option value="' + j + '"' + (String(v) === String(j) ? ' selected' : '') + '>' + esc(q.right[j]) + '</option>';
+        });
         h += '</select></li>';
       }
       h += '</ol>';
@@ -33,25 +35,27 @@ var PBQ = (function () {
       });
       h += '</ol>';
     } else if (q.type === 'config') {
-      h += '<div class="table-wrap"><table class="pbq-table"><thead><tr><th></th>';
-      q.columns.forEach(function (c) { h += '<th scope="col">' + esc(c.label) + '</th>'; });
-      h += '</tr></thead><tbody>';
+      /* Stacked rows: every dropdown stays on screen at any width (no horizontal table scroll). */
+      h += '<div class="pbq-rows">';
       q.rows.forEach(function (row, r) {
-        h += '<tr><th scope="row">' + esc(row.label) + '</th>';
+        h += '<div class="pbq-row"><div class="pbq-row-label">' + esc(row.label) + '</div><div class="pbq-fields">';
         q.columns.forEach(function (c) {
           if (row.answer && Object.prototype.hasOwnProperty.call(row.answer, c.key)) {
-            var cur = answer && answer[r] ? answer[r][c.key] : '';
-            h += '<td><select id="pc' + r + '-' + esc(c.key) + '" data-pbq="config" data-row="' + r + '" data-key="' + esc(c.key) + '" aria-label="' + esc(row.label + ' ' + c.label) + '"' + dis + '><option value="">Select...</option>';
-            c.choices.forEach(function (ch) { h += '<option value="' + esc(ch) + '"' + (cur === ch ? ' selected' : '') + '>' + esc(ch) + '</option>'; });
-            h += '</select></td>';
+            var cur = answer && answer[r] ? answer[r][c.key] : '', id = 'pc' + r + '-' + esc(c.key);
+            h += '<div class="pbq-field"><label for="' + id + '">' + esc(c.label) + '</label><select id="' + id + '" data-pbq="config" data-row="' + r + '" data-key="' + esc(c.key) + '"' + dis + '><option value="">Select...</option>';
+            Engine.choiceOrder(c.choices.length, opt.seed, q.id, 'col:' + c.key).forEach(function (k) {
+              var ch = c.choices[k];
+              h += '<option value="' + esc(ch) + '"' + (cur === ch ? ' selected' : '') + '>' + esc(ch) + '</option>';
+            });
+            h += '</select></div>';
           } else {
             var f = row.fixed && row.fixed[c.key];
-            h += '<td class="fixed">' + (f != null ? esc(f) : '') + '</td>';
+            if (f != null && f !== '') h += '<div class="pbq-field fixed"><span class="pbq-field-label">' + esc(c.label) + '</span><span class="pbq-field-val">' + esc(f) + '</span></div>';
           }
         });
-        h += '</tr>';
+        h += '</div></div>';
       });
-      h += '</tbody></table></div>';
+      h += '</div>';
     }
     return h + '</div>';
   }
@@ -111,20 +115,21 @@ var PBQ = (function () {
       q.answer.forEach(function (it) { h += '<li>' + esc(q.items[it]) + '</li>'; });
       h += '</ol></div></div>';
     } else {
-      h += '<div class="table-wrap"><table class="pbq-table"><thead><tr><th></th>';
-      q.columns.forEach(function (c) { h += '<th scope="col">' + esc(c.label) + '</th>'; });
-      h += '</tr></thead><tbody>';
+      h += '<div class="pbq-rows">';
       q.rows.forEach(function (row, r) {
-        h += '<tr><th scope="row">' + esc(row.label) + '</th>';
+        h += '<div class="pbq-row"><div class="pbq-row-label">' + esc(row.label) + '</div><div class="pbq-fields">';
         q.columns.forEach(function (c) {
           if (row.answer && Object.prototype.hasOwnProperty.call(row.answer, c.key)) {
             var mine = answer && answer[r] ? answer[r][c.key] : '', good = mine === row.answer[c.key];
-            h += '<td>' + (good ? ok : bad) + ' ' + esc(mine || '(none)') + (good ? '' : '<br><span class="right">Correct: ' + esc(row.answer[c.key]) + '</span>') + '</td>';
-          } else h += '<td class="fixed">' + esc((row.fixed && row.fixed[c.key]) || '') + '</td>';
+            h += '<div class="pbq-field"><span class="pbq-field-label">' + esc(c.label) + '</span><span class="pbq-field-val">' + (good ? ok : bad) + ' ' + esc(mine || '(none)') + (good ? '' : '<br><span class="right">Correct: ' + esc(row.answer[c.key]) + '</span>') + '</span></div>';
+          } else {
+            var f = row.fixed && row.fixed[c.key];
+            if (f != null && f !== '') h += '<div class="pbq-field fixed"><span class="pbq-field-label">' + esc(c.label) + '</span><span class="pbq-field-val">' + esc(f) + '</span></div>';
+          }
         });
-        h += '</tr>';
+        h += '</div></div>';
       });
-      h += '</tbody></table></div>';
+      h += '</div>';
     }
     return h + '</div>';
   }

@@ -75,6 +75,9 @@ h1:focus { outline: none; }
 .site-header nav { display: flex; gap: var(--s4); }
 .site-header nav a { text-decoration: none; color: var(--ink-2); font-weight: 500; padding: 4px 0; border-bottom: 2px solid transparent; }
 .site-header nav a:hover { color: var(--ink); }
+.site-header nav a.ext-link { display: inline-flex; align-items: center; gap: 4px; }
+.site-header nav a.ext-link .ext { opacity: .7; position: relative; top: -1px; }
+.site-header nav a.ext-link:hover .ext { opacity: 1; }
 .site-header nav a[aria-current], .site-header nav a.current { color: var(--ink); border-bottom-color: var(--accent); }
 .brand { display: inline-flex; align-items: center; text-decoration: none; border-radius: 999px; }
 .brand:hover { color: inherit; }

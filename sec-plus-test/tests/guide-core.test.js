@@ -193,7 +193,8 @@ t('links between the quiz and the guide name index.html (a bare "guide/" or "../
   const fs = require('fs'), rd = f => fs.readFileSync(__dirname + '/../' + f, 'utf8');
   assert(/href="guide\/index\.html"/.test(rd('index.html')), 'index.html Guide link');
   assert(/href="\.\.\/guide\/index\.html"/.test(rd('tests/dev.html')), 'dev.html Guide link');
-  assert(/href="\.\.\/index\.html">Practice/.test(rd('guide/index.html')), 'guide Practice link');
+  assert(/href="\.\.\/index\.html"[^>]*target="_blank"[^>]*>Practice/.test(rd('guide/index.html')), 'guide Practice link opens a new tab');
+  assert(/href="guide\/index\.html"[^>]*target="_blank"[^>]*rel="noopener"/.test(rd('index.html')), 'index.html Guide link opens a new tab');
   ['index.html', 'tests/dev.html', 'guide/index.html', 'js/ui.js', 'guide/guide.js'].forEach(f =>
     assert(!/href=(["'])(?:\.\.\/)*(?:guide\/)?\1|'(?:\.\.\/)?guide\/'/.test(rd(f)), 'directory-style link in ' + f));
 });

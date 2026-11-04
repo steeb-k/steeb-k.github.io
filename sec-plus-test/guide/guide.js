@@ -1,0 +1,347 @@
+/* Study guide app: routing, sidebar, scrollspy, search, tooltips, readiness marks. Data: window.SEC_GUIDE (generated). */
+(function () {
+  'use strict';
+  var G = window.SEC_GUIDE, C = window.GuideCore, ACR = window.SEC_ACRONYMS || {}, OBJ = window.SEC_OBJECTIVES || {};
+  var REPO = 'steeb-k/secplus-study-guide';
+  var $ = function (id) { return document.getElementById(id); };
+  var elMain = $('g-main'), elTree = $('g-tree'), elWeak = $('g-weak'), elQ = $('g-q'), elRes = $('g-results'), elSide = $('g-side'),
+    elTip = $('g-tooltip'), elMenu = $('g-menu'), elBack = $('g-backdrop'), elLive = $('g-live');
+  var bySlug = {}, byDomain = {};
+  G.files.forEach(function (f) { bySlug[f.slug] = f; if (/^0[1-5]$/.test(f.id)) byDomain[+f.id.slice(1)] = f; });
+  var cur = null, ready = {}, pendingHit = null, headings = [], spyRaf = 0;
+  /* acronym row ids: exact key, else case-insensitive (glossary "IPsec" vs table "IPSec") */
+  var anchorLower = {};
+  Object.keys(G.acronymAnchors).forEach(function (k) { anchorLower[k.toLowerCase()] = G.acronymAnchors[k]; });
+  function acrAnchor(key) { return G.acronymAnchors[key] || anchorLower[String(key).toLowerCase()] || null; }
+  var index = C.buildSearchIndex(G.sections.filter(function (s) { return s.file !== 'acronyms'; }), ACR);
+
+  /* ---------- boot status ---------- */
+  function setBoot() {
+    var el = $('boot-status');
+    if (el) el.textContent = 'files=' + G.files.length + ' sections=' + G.sections.length + ' acronyms=' + Object.keys(ACR).length + ' errors=' + (window.__errs || 0);
+  }
+  window.addEventListener('error', function () { window.__errs = (window.__errs || 0) + 1; setBoot(); }, true);
+  window.addEventListener('unhandledrejection', function () { window.__errs = (window.__errs || 0) + 1; setBoot(); });
+
+  /* ---------- readiness (same origin localStorage as the quiz) ---------- */
+  function loadReadiness() {
+    try { ready = C.readinessByObjective(JSON.parse(localStorage.getItem('secplus.attempts') || '[]')); } catch (e) { ready = {}; }
+  }
+  function objFromId(id) { var m = /^obj-(\d)-(\d+)$/.exec(id || ''); return m ? m[1] + '.' + m[2] : null; }
+  function dotFor(obj) {
+    var r = obj && ready[obj];
+    if (!r) return '<span class="dot none" aria-hidden="true"></span>';
+    var p = Math.round(r.pct * 100);
+    return '<span class="dot ' + C.readinessLevel(r.pct) + '" title="' + p + '% over ' + r.count + ' question' + (r.count === 1 ? '' : 's') + '" role="img" aria-label="' + p + '% over ' + r.count + ' questions"></span>';
+  }
+
+  /* ---------- routing ---------- */
+  function parseRoute() {
+    var h = location.hash || '', parts = h.replace(/^#\/?/, '').split('/').filter(Boolean).map(function (x) { try { return decodeURIComponent(x); } catch (e) { return x; } });
+    var f = bySlug[parts[0]];
+    return { file: f || G.files[0], id: f ? parts[1] || null : null };
+  }
+  function fileIndex(f) { return G.files.indexOf(f); }
+  function go(slug, id) { location.hash = '#/' + slug + (id ? '/' + id : ''); }
+
+  function onRoute() {
+    var r = parseRoute();
+    closeDrawer(); hideTip();
+    if (r.file !== cur) { cur = r.file; renderFile(r.file); }
+    var target = r.id && document.getElementById(r.id);
+    if (target && elMain.contains(target)) {
+      target.scrollIntoView({ block: 'start' });
+      if (target.tagName === 'TR') flash(target);
+      document.title = headingText(target) + ' · Sec+ 701 Guide';
+    } else {
+      window.scrollTo(0, 0);
+      document.title = (r.file === G.files[0] ? 'Exam Overview' : r.file.title) + ' · Sec+ 701 Guide';
+    }
+    if (pendingHit) { var t = pendingHit; pendingHit = null; highlightHit(target, t); }
+    spy();
+  }
+  function headingText(el) {
+    if (el.tagName === 'TR') return (el.cells[0] ? el.cells[0].textContent : '') + ' (acronyms)';
+    var c = el.cloneNode(true); var a = c.querySelector('.hanchor'); if (a) a.remove();
+    return c.textContent.trim();
+  }
+  function flash(el) { el.classList.add('flash'); setTimeout(function () { el.classList.remove('flash'); }, 2200); }
+  function highlightHit(startEl, token) {
+    if (!token) return;
+    var root = elMain.querySelector('.g-doc'), w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT), n, started = !startEl, low = token.toLowerCase();
+    while ((n = w.nextNode())) {
+      if (!started) { if (startEl.contains(n) || (startEl.compareDocumentPosition(n) & Node.DOCUMENT_POSITION_FOLLOWING)) started = true; else continue; }
+      var i = C.wordIndex(n.nodeValue.toLowerCase(), low);
+      if (i < 0 || n.parentNode.closest('.hanchor')) continue;
+      var rng = document.createRange(); rng.setStart(n, i); rng.setEnd(n, i + token.length);
+      var m = document.createElement('mark'); m.className = 'hit'; rng.surroundContents(m);
+      m.scrollIntoView({ block: 'center' });
+      setTimeout(function () { var p = m.parentNode; if (p) { p.replaceChild(document.createTextNode(m.textContent), m); p.normalize(); } }, 3500);
+      return;
+    }
+  }
+
+  /* ---------- content ---------- */
+  function renderFile(f) {
+    var i = fileIndex(f), prev = G.files[i - 1], next = G.files[i + 1], date = String(G.builtAt || '').slice(0, 10);
+    var h = '<div class="g-banner"><b>AI-generated, not yet vetted.</b> Cross-check anything surprising against the official CompTIA SY0-701 objectives and a published study guide.</div>' +
+      '<article class="g-doc" data-file="' + f.slug + '">' + f.html + '</article><nav class="g-pn" aria-label="Chapters">' +
+      (prev ? '<a class="prev" href="#/' + prev.slug + '" rel="prev"><small>Previous</small>' + C.escHtml(prev.title) + '</a>' : '') +
+      (next ? '<a class="next" href="#/' + next.slug + '" rel="next"><small>Next</small>' + C.escHtml(next.title) + '</a>' : '') + '</nav>' +
+      '<p class="g-foot">Built from ' + REPO + ' @ ' + C.escHtml(G.sourceCommit) + ' · ' + C.escHtml(date) + ' · <a href="https://github.com/' + REPO + '/blob/main/' + f.src +
+      '" target="_blank" rel="noopener">Edit this file on GitHub</a></p>';
+    elMain.innerHTML = h;
+    var doc = elMain.querySelector('.g-doc');
+    Array.prototype.forEach.call(doc.querySelectorAll('table'), function (t) {
+      var w = document.createElement('div'); w.className = 'table-wrap'; t.parentNode.insertBefore(w, t); w.appendChild(t);
+    });
+    Array.prototype.forEach.call(doc.querySelectorAll('h1,h2,h3,h4,h5,h6'), function (hd) {
+      var a = document.createElement('a'); a.className = 'hanchor'; a.href = '#/' + f.slug + '/' + hd.id; a.textContent = '#';
+      a.setAttribute('aria-label', 'Copy link to this section'); hd.appendChild(a);
+    });
+    addTips(doc, f);
+    headings = Array.prototype.slice.call(doc.querySelectorAll('h2,h3'));
+    buildTree();
+  }
+
+  /* ---------- tooltips: wrap acronyms and objective references ---------- */
+  var SKIP = 'pre,code,a,abbr,h1,script,style';
+  function addTips(root, f) {
+    var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT), nodes = [], n;
+    while ((n = w.nextNode())) {
+      var p = n.parentNode;
+      if (!n.nodeValue.trim() || p.closest(SKIP)) continue;
+      if (f.slug === 'acronyms' && p.closest('td:first-child')) continue;
+      nodes.push(n);
+    }
+    var opts = { objectives: OBJ };
+    nodes.forEach(function (node) {
+      var segs = C.tokenizeForTips(node.nodeValue, ACR, opts);
+      if (segs.length === 1 && segs[0].type === 'text') return;
+      var frag = document.createDocumentFragment();
+      segs.forEach(function (s) {
+        if (s.type === 'text') frag.appendChild(document.createTextNode(s.text));
+        else if (s.type === 'acr') {
+          var ab = document.createElement('abbr'); ab.className = 'tip'; ab.tabIndex = 0; ab.setAttribute('data-tip', s.expansion); ab.setAttribute('data-acr', s.key); ab.textContent = s.text; frag.appendChild(ab);
+        } else {
+          var df = byDomain[s.domain];
+          if (!df) { frag.appendChild(document.createTextNode(s.text)); return; }
+          var a = document.createElement('a'); a.className = 'xref'; a.href = '#/' + df.slug + '/obj-' + s.obj.replace('.', '-'); a.textContent = s.text;
+          a.title = OBJ[s.domain] && OBJ[s.domain].objectives[s.obj] ? s.obj + ' ' + OBJ[s.domain].objectives[s.obj] : s.obj; frag.appendChild(a);
+        }
+      });
+      node.parentNode.replaceChild(frag, node);
+    });
+  }
+
+  var tipFor = null, hideTimer = 0, lastPointer = 'mouse', lastDown = 0;
+  function showTip(el) {
+    clearTimeout(hideTimer);
+    if (tipFor && tipFor !== el) tipFor.classList.remove('on');
+    tipFor = el; el.classList.add('on');
+    var key = el.getAttribute('data-acr'), anchor = acrAnchor(key);
+    elTip.innerHTML = '<b>' + C.escHtml(key) + '</b>' + C.escHtml(el.getAttribute('data-tip')) +
+      (anchor ? '<a class="t-more" href="#/acronyms/' + anchor + '">Acronyms list ↗</a>' : '');
+    el.setAttribute('aria-describedby', 'g-tooltip');
+    elTip.hidden = false; placeTip();
+  }
+  function placeTip() {
+    if (!tipFor) return;
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight, rects = tipFor.getClientRects(), r = rects.length ? rects[0] : tipFor.getBoundingClientRect();
+    var gap = 8, tw = elTip.offsetWidth, th = elTip.offsetHeight;
+    var left = Math.max(8, Math.min(r.left + r.width / 2 - tw / 2, vw - tw - 8));
+    var below = r.bottom + gap + th <= vh - 4, top = below ? r.bottom + gap : r.top - gap - th;
+    if (!below && top < 4) { top = Math.max(4, Math.min(r.bottom + gap, vh - th - 4)); below = top >= r.bottom; }
+    elTip.style.left = left + 'px'; elTip.style.top = top + 'px';
+    elTip.style.setProperty('--caret', Math.max(12, Math.min(r.left + r.width / 2 - left, tw - 12)) + 'px');
+    elTip.className = 'tooltip ' + (below ? 'below' : 'above');
+  }
+  function hideTip() {
+    clearTimeout(hideTimer);
+    if (tipFor) { tipFor.classList.remove('on'); tipFor.removeAttribute('aria-describedby'); tipFor = null; }
+    elTip.hidden = true;
+  }
+  function hideSoon() { clearTimeout(hideTimer); hideTimer = setTimeout(hideTip, 160); }
+  document.addEventListener('pointerdown', function (e) { lastPointer = e.pointerType || 'mouse'; lastDown = Date.now(); }, true);
+  /* a tap focuses the (tabindex=0) tip before its click: leave touch to the click toggle, or the tap shows and then hides it */
+  function touchFocus() { return lastPointer === 'touch' && Date.now() - lastDown < 1000; }
+  document.addEventListener('mouseover', function (e) {
+    if (lastPointer === 'touch') return;
+    var t = e.target.closest && e.target.closest('.tip');
+    if (t) showTip(t); else if (e.target.closest && e.target.closest('#g-tooltip')) clearTimeout(hideTimer);
+  });
+  document.addEventListener('mouseout', function (e) {
+    if (lastPointer === 'touch') return;
+    if (e.target.closest && (e.target.closest('.tip') || e.target.closest('#g-tooltip'))) hideSoon();
+  });
+  document.addEventListener('focusin', function (e) { var t = e.target.closest && e.target.closest('.tip'); if (t && !touchFocus()) showTip(t); });
+  document.addEventListener('focusout', function (e) { if (e.target.closest && e.target.closest('.tip')) hideSoon(); });
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest && e.target.closest('.tip');
+    if (t && lastPointer === 'touch') { e.preventDefault(); if (tipFor === t) hideTip(); else showTip(t); }
+    else if (!t && !(e.target.closest && e.target.closest('#g-tooltip'))) hideTip();
+    else if (e.target.closest && e.target.closest('#g-tooltip a')) hideTip();
+  });
+  document.addEventListener('keydown', function (e) {
+    var t = e.target;
+    if (e.key === 'Enter' && t.classList && t.classList.contains('tip') && acrAnchor(t.getAttribute('data-acr'))) go('acronyms', acrAnchor(t.getAttribute('data-acr')));
+  });
+  window.addEventListener('scroll', function () {
+    if (tipFor && document.activeElement === tipFor) placeTip(); else hideTip();
+    if (!spyRaf) spyRaf = requestAnimationFrame(function () { spyRaf = 0; spy(); });
+  }, { passive: true, capture: true });
+  window.addEventListener('resize', function () { if (tipFor) placeTip(); measureHeader(); });
+
+  /* ---------- sidebar tree + scrollspy ---------- */
+  function buildTree() {
+    var h = '<ul>';
+    G.files.forEach(function (f) {
+      var open = f === cur;
+      h += '<li class="nt-file' + (open ? ' open' : '') + '"><a href="#/' + f.slug + '"' + (open ? ' aria-current="page"' : '') + '>' + C.escHtml(f.title) + '</a>';
+      if (open) {
+        h += '<ul class="nt-h2s">';
+        var inH2 = false;
+        f.toc.forEach(function (t) {
+          if (t.level === 2) {
+            if (inH2) h += '</ul></li>';
+            h += '<li class="nt-h2" data-id="' + t.id + '"><a href="#/' + f.slug + '/' + t.id + '" data-id="' + t.id + '">' + dotFor(objFromId(t.id)) + '<span>' + C.escHtml(t.text) + '</span></a><ul class="nt-h3s">';
+            inH2 = true;
+          } else if (inH2) h += '<li class="nt-h3"><a href="#/' + f.slug + '/' + t.id + '" data-id="' + t.id + '">' + C.escHtml(t.text) + '</a></li>';
+        });
+        if (inH2) h += '</ul></li>';
+        h += '</ul>';
+      }
+      h += '</li>';
+    });
+    elTree.innerHTML = h + '</ul>';
+    renderWeak();
+  }
+  function spy() {
+    if (!headings.length) return;
+    var line = (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--g-hdr')) || 57) + 24, act = null;
+    for (var i = 0; i < headings.length; i++) { if (headings[i].getBoundingClientRect().top <= line) act = headings[i]; else break; }
+    var id = act ? act.id : null, h2id = null;
+    if (act) { var k = headings.indexOf(act); while (k >= 0 && headings[k].tagName !== 'H2') k--; h2id = k >= 0 ? headings[k].id : null; }
+    Array.prototype.forEach.call(elTree.querySelectorAll('.nt-h2'), function (li) { li.classList.toggle('active', li.getAttribute('data-id') === h2id); });
+    var prev = elTree.querySelector('a.cur'); if (prev && prev.getAttribute('data-id') === id) return;
+    if (prev) prev.classList.remove('cur');
+    var a = id && elTree.querySelector('.nt-h2s a[data-id="' + id + '"]');
+    if (a) {
+      a.classList.add('cur');
+      var sb = elSide.getBoundingClientRect(), ab = a.getBoundingClientRect();
+      if (ab.top < sb.top + 60 || ab.bottom > sb.bottom - 20) elSide.scrollTop += ab.top - sb.top - sb.height / 3;
+    }
+  }
+  function renderWeak() {
+    var weak = C.weakSpots(ready, 5), h = '<h2>Weak spots</h2>';
+    if (!Object.keys(ready).length) h += '<p>Answer some practice questions and your weakest objectives show up here.</p>';
+    else {
+      h += '<ul>';
+      weak.forEach(function (w) {
+        var d = w.obj.split('.')[0], f = byDomain[d], title = OBJ[d] && OBJ[d].objectives[w.obj] || '';
+        if (!f) return;
+        h += '<li><a href="#/' + f.slug + '/obj-' + w.obj.replace('.', '-') + '" title="' + C.escHtml(title) + '">' + dotFor(w.obj) + '<span>' + w.obj + ' ' + C.escHtml(title.length > 34 ? title.slice(0, 33) + '…' : title) +
+          '</span><span class="w-pct">' + Math.round(w.pct * 100) + '%</span></a></li>';
+      });
+      h += '</ul>';
+    }
+    elWeak.innerHTML = h;
+  }
+  function refreshReadiness() { loadReadiness(); if (cur) buildTree(); spy(); }
+  window.addEventListener('focus', refreshReadiness);
+  window.addEventListener('storage', refreshReadiness);
+
+  /* ---------- search UI ---------- */
+  var results = [], sel = -1, qTimer = 0;
+  function runSearch() {
+    var q = elQ.value;
+    if (!q.trim()) { clearResults(); return; }
+    var r = C.search(index, q), h = '';
+    results = [];
+    if (r.acronyms.length) {
+      h += '<div class="g-res-group" role="presentation">Acronyms</div>';
+      r.acronyms.forEach(function (a) {
+        var i = results.push({ href: '#/acronyms/' + (acrAnchor(a.key) || ''), hit: null }) - 1;
+        h += '<a class="g-res" role="option" id="g-r' + i + '" data-i="' + i + '" href="' + results[i].href + '"><span class="r-key">' + C.escHtml(a.key) + '</span><span class="r-exp">' + C.escHtml(a.expansion) + '</span></a>';
+      });
+    }
+    if (r.sections.length) {
+      h += '<div class="g-res-group" role="presentation">Sections</div>';
+      r.sections.forEach(function (s) {
+        var i = results.push({ href: '#/' + s.section.file + '/' + s.section.id, hit: s.bodyHit ? s.token : null }) - 1;
+        h += '<a class="g-res" role="option" id="g-r' + i + '" data-i="' + i + '" href="' + results[i].href + '"><span class="r-path">' + C.escHtml(s.section.path) + '</span><span class="r-title">' + s.titleHtml +
+          '</span><span class="r-snip">' + s.snippet + '</span></a>';
+      });
+    }
+    if (!results.length) h = '<p class="g-empty">No matches.</p>';
+    elRes.innerHTML = h; elRes.hidden = false; elTree.hidden = true; elWeak.hidden = true; elQ.setAttribute('aria-expanded', 'true');
+    sel = results.length ? 0 : -1; markSel();
+  }
+  function markSel() {
+    Array.prototype.forEach.call(elRes.querySelectorAll('.g-res'), function (a) { a.setAttribute('aria-selected', String(+a.getAttribute('data-i') === sel)); });
+    var a = sel >= 0 && $('g-r' + sel);
+    if (a) { elQ.setAttribute('aria-activedescendant', a.id); var sb = elSide.getBoundingClientRect(), ab = a.getBoundingClientRect(); if (ab.top < sb.top || ab.bottom > sb.bottom) a.scrollIntoView({ block: 'nearest' }); }
+    else elQ.removeAttribute('aria-activedescendant');
+  }
+  function clearResults() {
+    results = []; sel = -1; elRes.hidden = true; elRes.innerHTML = ''; elTree.hidden = false; elWeak.hidden = false; elQ.setAttribute('aria-expanded', 'false'); elQ.removeAttribute('aria-activedescendant');
+  }
+  function openResult(i) {
+    var r = results[i]; if (!r) return;
+    pendingHit = r.hit;
+    var same = location.hash === r.href;
+    location.hash = r.href;
+    if (same) onRoute();
+    elQ.value = ''; clearResults(); elQ.blur();
+  }
+  elQ.addEventListener('input', function () { clearTimeout(qTimer); qTimer = setTimeout(runSearch, 80); });
+  elQ.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      if (!results.length) return;
+      e.preventDefault(); sel = (sel + (e.key === 'ArrowDown' ? 1 : -1) + results.length) % results.length; markSel();
+    } else if (e.key === 'Enter') {
+      clearTimeout(qTimer); if (!elRes.hidden || elQ.value.trim()) { if (elRes.hidden) runSearch(); e.preventDefault(); openResult(sel); }
+    } else if (e.key === 'Escape') { elQ.value = ''; clearResults(); }
+  });
+  elRes.addEventListener('click', function (e) {
+    var a = e.target.closest('.g-res'); if (!a) return;
+    e.preventDefault(); openResult(+a.getAttribute('data-i'));
+  });
+
+  /* ---------- drawer, keys, copy-link ---------- */
+  function openDrawer() { elSide.classList.add('open'); elBack.hidden = false; elMenu.setAttribute('aria-expanded', 'true'); }
+  function closeDrawer() { elSide.classList.remove('open'); elBack.hidden = true; elMenu.setAttribute('aria-expanded', 'false'); }
+  elMenu.addEventListener('click', function () { if (elSide.classList.contains('open')) closeDrawer(); else openDrawer(); });
+  elBack.addEventListener('click', closeDrawer);
+  elSide.addEventListener('click', function (e) { if (e.target.closest('.nt-h2s a, .nt-file > a, .g-weak a')) closeDrawer(); });
+  function typing(t) { return t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable); }
+  document.addEventListener('keydown', function (e) {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key === 'Escape') {
+      hideTip();
+      if (elSide.classList.contains('open') && elRes.hidden) { closeDrawer(); elMenu.focus(); }
+      if (!elRes.hidden || elQ.value) { elQ.value = ''; clearResults(); }
+      return;
+    }
+    if (typing(e.target)) return;
+    if (e.key === '/') { e.preventDefault(); if (window.innerWidth < 900) openDrawer(); elQ.focus(); elQ.select(); }
+    else if (e.key === '[' || e.key === ']') {
+      var f = G.files[fileIndex(cur) + (e.key === ']' ? 1 : -1)]; if (f) go(f.slug);
+    }
+  });
+  elMain.addEventListener('click', function (e) {
+    var a = e.target.closest('.hanchor'); if (!a) return;
+    e.preventDefault();
+    var url = location.href.split('#')[0] + a.getAttribute('href');
+    location.hash = a.getAttribute('href');
+    try { navigator.clipboard.writeText(url).then(function () { elLive.textContent = 'Link copied'; }, function () {}); } catch (err) { /* file:// or no clipboard: the address bar has it */ }
+  });
+
+  /* ---------- init ---------- */
+  function measureHeader() { var h = document.querySelector('.site-header'); if (h) document.documentElement.style.setProperty('--g-hdr', h.offsetHeight + 'px'); }
+  measureHeader(); loadReadiness();
+  window.addEventListener('hashchange', onRoute);
+  onRoute();
+  document.documentElement.dataset.ready = '1';
+  setBoot();
+})();

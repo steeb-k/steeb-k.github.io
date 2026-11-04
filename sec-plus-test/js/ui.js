@@ -7,6 +7,19 @@ var UI = (function () {
   function num(x) { return Math.round(x * 10) / 10; }
   function date(ts) { var d = new Date(ts); return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
   function dname(d) { return OBJ()[d].name; }
+  /* Study guide deep links. Slugs match guide/data/guide.js files[].slug (built from the guide repo); keep this the only copy. */
+  var GUIDE_SLUGS = { 1: 'domain-1-general-security-concepts', 2: 'domain-2-threats-vulnerabilities-mitigations', 3: 'domain-3-security-architecture',
+    4: 'domain-4-security-operations', 5: 'domain-5-program-management-oversight' };
+  /* explicit index.html: a bare "guide/" opens a directory listing when the site is used from file:// (Pages serves both) */
+  function guideBase() { return (typeof location !== 'undefined' && /\/tests\//.test(location.pathname)) ? '../guide/index.html' : 'guide/index.html'; }
+  function guideHref(o) {
+    var m = /^(\d)\.(\d+)$/.exec(String(o)), base = guideBase();
+    return m && GUIDE_SLUGS[m[1]] ? base + '#/' + GUIDE_SLUGS[m[1]] + '/obj-' + m[1] + '-' + m[2] : null;
+  }
+  function guideLink(o, label) {
+    var h = guideHref(o);
+    return h ? '<a href="' + esc(h) + '" target="_blank" rel="noopener" title="Open in the study guide">' + label + '</a>' : label;
+  }
   function objTitle(o) { var d = o.split('.')[0]; return OBJ()[d] ? OBJ()[d].objectives[o] : ''; }
   var BADGE = { green: 'Ready', yellow: 'Almost', red: 'Needs work', none: 'No data' };
   function badge(r) { return '<span class="badge badge-' + r + '">' + BADGE[r] + '</span>'; }
@@ -43,7 +56,7 @@ var UI = (function () {
       '<p>' + (c.finalBest ? 'Best: <strong>' + c.finalBest + '</strong> scaled' : 'Not attempted') + '</p></a>';
     h += '<a class="card link" href="#/drill"><h2>Missed Drill</h2><p class="muted">Practice only the questions you last got wrong.</p><p><strong>' + c.missed + '</strong> to review</p></a>';
     h += '</div><nav class="row footnav" aria-label="More"><a class="btn" href="#/history">History</a><a class="btn" href="#/settings">Settings</a>' +
-      '<a class="btn" href="https://github.com/steeb-k/secplus-study-guide" rel="noopener">Study guide</a><a class="btn" href="https://github.com/steeb-k/steeb-k.github.io/tree/main/sec-plus-test" rel="noopener">Source</a></nav>';
+      '<a class="btn" href="' + guideBase() + '">Study guide</a><a class="btn" href="https://github.com/steeb-k/steeb-k.github.io/tree/main/sec-plus-test" rel="noopener">Source</a></nav>';
     return h;
   }
   function sessionLabel(s) {
@@ -133,7 +146,7 @@ var UI = (function () {
       h += '<div class="feedback ' + (r.correct ? 'ok' : (r.points > 0 ? 'part' : 'bad')) + '" role="status"><strong>' +
         (r.correct ? 'Correct' : (r.points > 0 ? 'Partially correct (' + pct(r.points) + ')' : 'Incorrect')) + '</strong>';
       if (isPbq) h += PBQ.review(q, c.answer, s.id);
-      h += '<p>' + esc(q.explanation) + '</p>' + acronyms(c.acro) + '<p class="muted">Objective ' + esc(q.objective) + ': ' + esc(objTitle(q.objective)) + '</p></div>';
+      h += '<p>' + esc(q.explanation) + '</p>' + acronyms(c.acro) + '<p class="muted">' + guideLink(q.objective, 'Objective ' + esc(q.objective) + ': ' + esc(objTitle(q.objective))) + '</p></div>';
     }
     h += '</article><div class="row actions">';
     h += '<button class="btn" data-act="prev"' + (c.idx === 0 ? ' disabled' : '') + '>Prev</button>';
@@ -172,7 +185,7 @@ var UI = (function () {
     if (!c.items.length) h += '<p class="muted">Nothing to show.</p>';
     c.items.forEach(function (it) {
       var q = it.q, isPbq = q.type !== 'single' && q.type !== 'multi';
-      h += '<article class="panel rev ' + (it.correct ? 'ok' : (it.points > 0 ? 'part' : 'bad')) + '"><p class="muted">#' + (it.n) + ' &middot; ' + esc(q.id) + ' &middot; Obj ' + esc(q.objective) +
+      h += '<article class="panel rev ' + (it.correct ? 'ok' : (it.points > 0 ? 'part' : 'bad')) + '"><p class="muted">#' + (it.n) + ' &middot; ' + esc(q.id) + ' &middot; ' + guideLink(q.objective, 'Obj ' + esc(q.objective)) +
         (it.flagged ? ' &middot; <span class="flagtag">Flagged</span>' : '') + ' &middot; ' + (it.correct ? 'Correct' : (it.points > 0 ? 'Partial' : (it.answered ? 'Incorrect' : 'Unanswered'))) + '</p>';
       if (isPbq) h += '<h3 class="pbq-title">' + esc(q.title) + '</h3><p class="pbq-instr">' + esc(q.instructions) + '</p>' + PBQ.review(q, it.answer, a.id);
       else {
@@ -225,5 +238,5 @@ var UI = (function () {
   }
 
   function notFound() { return back() + '<h1>Not found</h1>'; }
-  return { esc: esc, home: home, moduleSetup: moduleSetup, finalSetup: finalSetup, drillSetup: drillSetup, quiz: quiz, acronyms: acronyms, results: results, history: history, settings: settings, notFound: notFound, sessionLabel: sessionLabel };
+  return { esc: esc, home: home, moduleSetup: moduleSetup, finalSetup: finalSetup, drillSetup: drillSetup, quiz: quiz, acronyms: acronyms, results: results, history: history, settings: settings, notFound: notFound, guideHref: guideHref, sessionLabel: sessionLabel };
 })();

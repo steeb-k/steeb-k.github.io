@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sec+ 701 Guide</title>
+<meta name="description" content="CompTIA Security+ SY0-701 study guide: searchable chapters with acronym tooltips and links to the practice questions.">
+<!-- Font preloads only over http(s): on file:// a crossorigin preload is a CORS error and never matches the CSS font request. -->
+<script>if (location.protocol !== 'file:') ['Regular', 'SemiBold'].forEach(function (w) { var l = document.createElement('link'); l.rel = 'preload'; l.as = 'font'; l.type = 'font/woff2'; l.crossOrigin = 'anonymous'; l.href = '../../fonts/ibm-plex/IBMPlexSans-' + w + '.woff2'; document.head.appendChild(l); });</script>
+<!-- Same theme choice as the practice site (stored in its settings); dark unless it says otherwise. -->
+<script>(function () { var t = 'dark'; try { var s = JSON.parse(localStorage.getItem('secplus.settings') || '{}'); if (s.theme) t = s.theme; } catch (e) {} if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); })();</script>
+<link rel="stylesheet" href="../../fonts/ibm-plex/plex.css">
+<link rel="stylesheet" href="../css/style.css">
+<link rel="stylesheet" href="guide.css">
+<script>window.__errs = 0; window.addEventListener('error', function () { window.__errs++; }, true);</script>
+</head>
+<body>
+<header class="site-header g-header">
+  <button class="g-menu btn small" id="g-menu" type="button" aria-controls="g-side" aria-expanded="false">Contents</button>
+  <a class="brand" href="#/" aria-label="Sec+ 701 guide home"><span class="brand-pill"><span class="brand-l">Sec+</span><span class="brand-r">701</span></span></a>
+  <nav aria-label="Main"><a href="../index.html">Practice</a> <a href="#/" class="current" aria-current="page">Guide</a></nav>
+</header>
+<div class="g-backdrop" id="g-backdrop" hidden></div>
+<div class="g-layout">
+  <aside class="g-side" id="g-side" aria-label="Guide contents">
+    <div class="g-search">
+      <label class="sr" for="g-q">Search guide</label>
+      <input id="g-q" type="search" placeholder="Search guide… ( / )" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="g-results" aria-autocomplete="list">
+    </div>
+    <div id="g-results" class="g-results" role="listbox" aria-label="Search results" hidden></div>
+    <nav id="g-tree" class="g-tree" aria-label="Chapters"></nav>
+    <section id="g-weak" class="g-weak" aria-label="Weak spots"></section>
+  </aside>
+  <main class="g-main" id="g-main" tabindex="-1"><noscript>This page needs JavaScript.</noscript></main>
+</div>
+<div class="tooltip" id="g-tooltip" role="tooltip" hidden></div>
+<div class="sr" id="g-live" role="status" aria-live="polite"></div>
+<div id="boot-status" hidden></div>
+<script src="../data/objectives.js"></script>
+<script src="../data/acronyms.js"></script>
+<script src="data/guide.js"></script>
+<script src="guide-core.js"></script>
+<script src="guide.js"></script>
+</body>
+</html>

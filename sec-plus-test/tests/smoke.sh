@@ -11,17 +11,28 @@ TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
   --virtual-time-budget=5000 --dump-dom "file://$FILE" >"$TMP/dom.html" 2>"$TMP/err.log"
 fail=0
 grep -q 'data-ready="1"' "$TMP/dom.html" || { echo "FAIL: app did not mark itself ready"; fail=1; }
-grep -q '<h1[^>]*>Security+ SY0-701 practice' "$TMP/dom.html" || { echo "FAIL: home screen not rendered"; fail=1; }
+# the study-guide page (guide/index.html) has its own boot-status and rendering checks; everything else is the quiz app
+GUIDE=0; case "$FILE" in */guide/index.html) GUIDE=1 ;; esac
+if [ $GUIDE -eq 0 ]; then
+  grep -q '<h1[^>]*>Security+ SY0-701 practice' "$TMP/dom.html" || { echo "FAIL: home screen not rendered"; fail=1; }
+else
+  grep -q '<h1 id="exam-overview">Exam Overview' "$TMP/dom.html" || { echo "FAIL: guide did not render the Exam Overview chapter"; fail=1; }
+  grep -q 'class="tip"' "$TMP/dom.html" || { echo "FAIL: no acronym tooltips rendered"; fail=1; }
+fi
 STATUS="$(grep -o 'id="boot-status"[^>]*>[^<]*' "$TMP/dom.html" | sed 's/.*>//')"
 echo "boot-status: ${STATUS:-<missing>}"
 case "$STATUS" in *"errors=0"*) ;; *) echo "FAIL: JS errors reported or boot-status missing"; fail=1 ;; esac
-case "$STATUS" in *"mcq=0 "*|"") echo "FAIL: question bank empty"; fail=1 ;; esac
+if [ $GUIDE -eq 0 ]; then
+  case "$STATUS" in *"mcq=0 "*|"") echo "FAIL: question bank empty"; fail=1 ;; esac
+else
+  case "$STATUS" in "files=9 sections="[1-9]*" acronyms="[1-9]*) ;; *) echo "FAIL: guide boot-status should read files=9 sections=N acronyms=M"; fail=1 ;; esac
+fi
 if grep -E 'CONSOLE.*(error|Uncaught)|Uncaught|ERR_FILE_NOT_FOUND|Failed to load resource' "$TMP/err.log" >"$TMP/errs.txt"; then
   echo "FAIL: console errors:"; cat "$TMP/errs.txt"; fail=1
 fi
 # tests/dev.html must load the same app CSS/JS, in the same order, as index.html (only the bank differs)
 appassets() { grep -oE '(href|src)="[^"]*(css/style\.css|fonts/ibm-plex/[A-Za-z-]+\.(css|woff2)|js/[a-z]+\.js|data/objectives\.js)"' "$1" | sed -E 's/.*"(\.\.\/)*([^"]*)"/\2/'; }
-if ! diff <(appassets "$ROOT/index.html") <(appassets "$ROOT/tests/dev.html") >"$TMP/sync.txt"; then
+if [ $GUIDE -eq 0 ] && ! diff <(appassets "$ROOT/index.html") <(appassets "$ROOT/tests/dev.html") >"$TMP/sync.txt"; then
   echo "FAIL: tests/dev.html is out of sync with index.html:"; cat "$TMP/sync.txt"; fail=1
 fi
 # no external (http/https/protocol-relative) stylesheet, preload, font or script tags: everything must be self-hosted

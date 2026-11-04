@@ -55,6 +55,13 @@ const below = id => `(()=>{const h=document.getElementById('${id}'); return h.ge
     const tree = await p.eval(`(()=>{const f=document.querySelector('.nt-file.open > a').getBoundingClientRect().left, h2=document.querySelector('.nt-h2s').getBoundingClientRect().left,
       h2a=document.querySelector('.nt-h2.active > a').getBoundingClientRect().left, h3=document.querySelector('.nt-h2.active .nt-h3s a').getBoundingClientRect().left; return {f,h2,h2a,h3}})()`);
     ok(tree.h2 > tree.f + 4 && tree.h3 > tree.h2a + 8, 'sidebar: H2 and H3 lists are indented', JSON.stringify(tree));
+    /* sidebar scroll box runs under the frosted header (top 0), its content starts below the header; when scrolled, its
+       first rows pass beneath the header, and the auto-scroll keeps the current heading inside the visible part */
+    const sv = await p.eval(`(()=>{const s=document.getElementById('g-side'), hb=document.querySelector('.site-header').getBoundingClientRect().bottom;
+      const cur=document.querySelector('#g-tree a.cur').getBoundingClientRect(), t0=s.getBoundingClientRect().top;
+      s.scrollTop=0; const q0=document.getElementById('g-q').getBoundingClientRect().top; s.scrollTop=200; const q1=document.getElementById('g-q').getBoundingClientRect().top;
+      return {t0, q0, hb, q1, curTop:cur.top, curBot:cur.bottom, vh:innerHeight}})()`);
+    ok(sv.t0 === 0 && sv.q0 >= sv.hb + 8 && sv.q1 < sv.hb && sv.curTop >= sv.hb && sv.curBot <= sv.vh, 'sidebar: scrolls under the header, content starts below it, current heading stays visible', JSON.stringify(sv));
     /* tooltip stays inside the viewport, near the right edge and the bottom */
     for (const [w, h] of [[1280, 800], [390, 844]]) {
       p = await B.page(G + '#/ports-protocols', { w, h, mobile: w < 900 });
@@ -181,6 +188,22 @@ const below = id => `(()=>{const h=document.getElementById('${id}'); return h.ge
     /* phone: gutter buttons stay inside the viewport, no horizontal overflow (touch: buttons always visible) */
     for (const slug of ['domain-4-security-operations', 'acronyms', 'ports-protocols']) {
       p = await B.page(G + '#/' + slug, { w: 390, h: 844, mobile: true, touch: true });
+      if (slug === 'acronyms') {
+        const dr = await p.eval(`(()=>{document.getElementById('g-menu').click(); const s=document.getElementById('g-side').getBoundingClientRect(), hb=document.querySelector('.site-header').getBoundingClientRect().bottom,
+          q=document.getElementById('g-q').getBoundingClientRect().top, m=document.getElementById('g-menu'), vis=sel=>getComputedStyle(m.querySelector(sel)).display!=='none';
+          const openIcons={back:vis('.i-back'), burger:vis('.i-open'), label:m.getAttribute('aria-label')}; m.click(); const closedIcons={back:vis('.i-back'), burger:vis('.i-open'), label:m.getAttribute('aria-label')};
+          return {top:s.top, hb, q, openIcons, closedIcons}})()`);
+        ok(Math.abs(dr.top - dr.hb) <= 1 && dr.q >= dr.hb + 8, 'phone drawer: opens flush under the header, search box not hidden', JSON.stringify(dr));
+        ok(dr.openIcons.back && !dr.openIcons.burger && /back/i.test(dr.openIcons.label) && dr.closedIcons.burger && !dr.closedIcons.back && dr.closedIcons.label === 'Contents',
+          'phone menu button: hamburger when closed, back arrow when open', JSON.stringify([dr.openIcons, dr.closedIcons]));
+        /* floating button: fixed bottom-left over the content, outside the header, on top of the open drawer; pill at the header's left edge */
+        const fab = await p.eval(`(()=>{const m=document.getElementById('g-menu'), r=m.getBoundingClientRect(), hit=()=>{const e=document.elementFromPoint(r.left+r.width/2, r.top+r.height/2); return e===m||m.contains(e)};
+          const closedHit=hit(); m.click(); const openHit=hit(); const sideW=parseFloat(getComputedStyle(document.getElementById('g-side')).width); m.click();
+          window.scrollTo(0, 400); const r2=m.getBoundingClientRect(); window.scrollTo(0, 0);
+          return {inHeader:!!m.closest('.site-header'), left:r.left, bottomGap:innerHeight-r.bottom, w:r.width, closedHit, openHit, overDrawer:r.left<sideW, stays:r2.top===r.top, pillLeft:document.querySelector('.brand-pill').getBoundingClientRect().left}})()`);
+        ok(!fab.inHeader && fab.left >= 8 && fab.left <= 24 && fab.bottomGap >= 8 && fab.bottomGap <= 24 && fab.w >= 44 && fab.closedHit && fab.openHit && fab.overDrawer && fab.stays && fab.pillLeft <= 24,
+          'phone menu button: floats fixed at bottom-left, clickable over the content and over the open drawer, pill flush left', JSON.stringify(fab));
+      }
       const ph = await p.eval(`(()=>{let minL=1e9, n=0; document.querySelectorAll('.g-doc .hl-btn').forEach(b=>{const r=b.getBoundingClientRect(); if(r.width&&r.right>0){n++; minL=Math.min(minL, r.left)}}); const vw=document.documentElement.clientWidth; return {minL, n, over:document.documentElement.scrollWidth-vw, op:getComputedStyle(document.querySelector('.hl-btn')).opacity}})()`);
       ok(ph.n > 0 && ph.minL >= 0 && ph.over <= 0 && ph.op === '0.45', `phone 390: ${slug} gutter buttons fit, no horizontal overflow, visible at 45%`, JSON.stringify(ph));
     }

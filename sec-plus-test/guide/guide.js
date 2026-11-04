@@ -253,7 +253,7 @@
     var a = id && elTree.querySelector('.nt-h2s a[data-id="' + id + '"]');
     if (a) {
       a.classList.add('cur');
-      var sb = elSide.getBoundingClientRect(), ab = a.getBoundingClientRect();
+      var sb = sideView(), ab = a.getBoundingClientRect();
       if (ab.top < sb.top + 60 || ab.bottom > sb.bottom - 20) elSide.scrollTop += ab.top - sb.top - sb.height / 3;
     }
   }
@@ -307,7 +307,7 @@
   function markSel() {
     Array.prototype.forEach.call(elRes.querySelectorAll('.g-res'), function (a) { a.setAttribute('aria-selected', String(+a.getAttribute('data-i') === sel)); });
     var a = sel >= 0 && $('g-r' + sel);
-    if (a) { elQ.setAttribute('aria-activedescendant', a.id); var sb = elSide.getBoundingClientRect(), ab = a.getBoundingClientRect(); if (ab.top < sb.top || ab.bottom > sb.bottom) a.scrollIntoView({ block: 'nearest' }); }
+    if (a) { elQ.setAttribute('aria-activedescendant', a.id); var sb = sideView(), ab = a.getBoundingClientRect(); if (ab.top < sb.top || ab.bottom > sb.bottom) a.scrollIntoView({ block: 'nearest' }); }
     else elQ.removeAttribute('aria-activedescendant');
   }
   function clearResults() {
@@ -480,8 +480,8 @@
   });
 
   /* ---------- drawer, keys, copy-link ---------- */
-  function openDrawer() { elSide.classList.add('open'); elBack.hidden = false; elMenu.setAttribute('aria-expanded', 'true'); }
-  function closeDrawer() { elSide.classList.remove('open'); elBack.hidden = true; elMenu.setAttribute('aria-expanded', 'false'); }
+  function openDrawer() { elSide.classList.add('open'); elBack.hidden = false; elMenu.setAttribute('aria-expanded', 'true'); elMenu.setAttribute('aria-label', 'Back to the page'); }
+  function closeDrawer() { elSide.classList.remove('open'); elBack.hidden = true; elMenu.setAttribute('aria-expanded', 'false'); elMenu.setAttribute('aria-label', 'Contents'); }
   elMenu.addEventListener('click', function () { if (elSide.classList.contains('open')) closeDrawer(); else openDrawer(); });
   elBack.addEventListener('click', closeDrawer);
   elSide.addEventListener('click', function (e) { if (e.target.closest('.nt-h2s a, .nt-file > a, .g-weak a, .g-hlink')) closeDrawer(); });
@@ -510,6 +510,11 @@
   });
 
   /* ---------- init ---------- */
+  /* Visible part of the sidebar: on desktop its scroll box runs under the sticky header, so the top edge is the header's bottom. */
+  function sideView() {
+    var sb = elSide.getBoundingClientRect(), h = document.querySelector('.site-header'), hb = h ? h.getBoundingClientRect().bottom : 0;
+    var top = Math.max(sb.top, hb); return { top: top, bottom: sb.bottom, height: sb.bottom - top };
+  }
   function measureHeader() { var h = document.querySelector('.site-header'); if (h) document.documentElement.style.setProperty('--g-hdr', h.offsetHeight + 'px'); }
   measureHeader(); loadReadiness(); loadHL();
   window.addEventListener('hashchange', onRoute);

@@ -5,13 +5,16 @@
   var REPO = 'steeb-k/secplus-study-guide';
   var $ = function (id) { return document.getElementById(id); };
   var elMain = $('g-main'), elTree = $('g-tree'), elWeak = $('g-weak'), elQ = $('g-q'), elRes = $('g-results'), elSide = $('g-side'),
-    elTip = $('g-tooltip'), elMenu = $('g-menu'), elBack = $('g-backdrop'), elLive = $('g-live');
+    elTip = $('g-tooltip'), elMenu = $('g-menu'), elBack = $('g-backdrop'), elLive = $('g-live'), elHlink = $('g-hlink');
   var bySlug = {}, byDomain = {};
   G.files.forEach(function (f) { bySlug[f.slug] = f; if (/^0[1-5]$/.test(f.id)) byDomain[+f.id.slice(1)] = f; });
-  var cur = null, ready = {}, pendingHit = null, headings = [], spyRaf = 0;
+  var cur = null, ready = {}, pendingHit = null, headings = [], spyRaf = 0, spyHold = null;
   /* acronym row ids: exact key, else case-insensitive (glossary "IPsec" vs table "IPSec") */
   var anchorLower = {};
   Object.keys(G.acronymAnchors).forEach(function (k) { anchorLower[k.toLowerCase()] = G.acronymAnchors[k]; });
+  var META = G.acronymMeta || {}, metaLower = {};
+  Object.keys(META).forEach(function (k) { metaLower[k.toLowerCase()] = META[k]; });
+  function acrMeta(key) { return META[key] || metaLower[String(key).toLowerCase()] || null; }
   function acrAnchor(key) { return G.acronymAnchors[key] || anchorLower[String(key).toLowerCase()] || null; }
   var index = C.buildSearchIndex(G.sections.filter(function (s) { return s.file !== 'acronyms'; }), ACR);
 
@@ -37,9 +40,12 @@
 
   /* ---------- routing ---------- */
   function parseRoute() {
-    var h = location.hash || '', parts = h.replace(/^#\/?/, '').split('/').filter(Boolean).map(function (x) { try { return decodeURIComponent(x); } catch (e) { return x; } });
+    var h = location.hash || '', qi = h.indexOf('?'), hl = null;
+    if (qi >= 0) { h.slice(qi + 1).split('&').forEach(function (kv) { var i = kv.indexOf('='); if (kv.slice(0, i) === 'hl') { try { hl = decodeURIComponent(kv.slice(i + 1)); } catch (e) { hl = null; } } }); h = h.slice(0, qi); }
+    var parts = h.replace(/^#\/?/, '').split('/').filter(Boolean).map(function (x) { try { return decodeURIComponent(x); } catch (e) { return x; } });
+    if (parts[0] === 'highlights') return { page: 'highlights' };
     var f = bySlug[parts[0]];
-    return { file: f || G.files[0], id: f ? parts[1] || null : null };
+    return { file: f || G.files[0], id: f ? parts[1] || null : null, hl: f ? hl : null };
   }
   function fileIndex(f) { return G.files.indexOf(f); }
   function go(slug, id) { location.hash = '#/' + slug + (id ? '/' + id : ''); }
@@ -47,10 +53,18 @@
   function onRoute() {
     var r = parseRoute();
     closeDrawer(); hideTip();
+    if (r.page) {
+      cur = null; headings = []; spyHold = null; confirmClear = false; renderHighlights(); buildTree(); window.scrollTo(0, 0);
+      document.title = 'Highlighted · Sec+ 701 Guide'; return;
+    }
     if (r.file !== cur) { cur = r.file; renderFile(r.file); }
-    var target = r.id && document.getElementById(r.id);
+    var target = r.id && document.getElementById(r.id), hb = r.hl && Object.prototype.hasOwnProperty.call(blockByKey, r.hl) ? blockByKey[r.hl] : null;
+    spyHold = null;
     if (target && elMain.contains(target)) {
-      target.scrollIntoView({ block: 'start' });
+      (hb ? hb.el : target).scrollIntoView({ block: 'start' });
+      /* near the end of a chapter the block cannot reach the top, so scrollspy would pick an earlier heading: keep the
+         section marked until the reader scrolls */
+      if (hb) { flashHL(hb.el); markCur(r.id); spyHold = { id: r.id, y: window.scrollY }; }
       if (target.tagName === 'TR') flash(target);
       document.title = headingText(target) + ' · Sec+ 701 Guide';
     } else {
@@ -65,6 +79,8 @@
     var c = el.cloneNode(true); var a = c.querySelector('.hanchor'); if (a) a.remove();
     return c.textContent.trim();
   }
+  function flashHL(el) { clearTimeout(el._hlT); el.classList.add('hl-flash'); el._hlT = setTimeout(function () { el.classList.remove('hl-flash'); }, 1500); }
+  function markCur(id) { var prev = elTree.querySelector('a.cur'); if (prev) prev.classList.remove('cur'); var a = elTree.querySelector('.nt-h2s a[data-id="' + id + '"]'); if (a) a.classList.add('cur'); }
   function flash(el) { el.classList.add('flash'); setTimeout(function () { el.classList.remove('flash'); }, 2200); }
   function highlightHit(startEl, token) {
     if (!token) return;
@@ -100,7 +116,9 @@
       a.setAttribute('aria-label', 'Copy link to this section'); hd.appendChild(a);
     });
     addTips(doc, f);
+    decorateBlocks(doc, f);
     headings = Array.prototype.slice.call(doc.querySelectorAll('h2,h3'));
+    updateMarks();
     buildTree();
   }
 
@@ -140,7 +158,9 @@
     if (tipFor && tipFor !== el) tipFor.classList.remove('on');
     tipFor = el; el.classList.add('on');
     var key = el.getAttribute('data-acr'), anchor = acrAnchor(key);
-    elTip.innerHTML = '<b>' + C.escHtml(key) + '</b>' + C.escHtml(el.getAttribute('data-tip')) +
+    var meta = acrMeta(key);
+    elTip.innerHTML = '<b>' + C.escHtml(key) + '</b>' + C.escHtml(meta && meta.expansion || el.getAttribute('data-tip')) +
+      (meta && meta.meaning ? '<span class="t-mean">' + C.escHtml(meta.meaning) + '</span>' : '') +
       (anchor ? '<a class="t-more" href="#/acronyms/' + anchor + '">Acronyms list ↗</a>' : '');
     el.setAttribute('aria-describedby', 'g-tooltip');
     elTip.hidden = false; placeTip();
@@ -194,19 +214,21 @@
 
   /* ---------- sidebar tree + scrollspy ---------- */
   function buildTree() {
-    var h = '<ul>';
+    var h = '<ul>', ls = liveStore(), counts = {};
     G.files.forEach(function (f) {
       var open = f === cur;
-      h += '<li class="nt-file' + (open ? ' open' : '') + '"><a href="#/' + f.slug + '"' + (open ? ' aria-current="page"' : '') + '>' + C.escHtml(f.title) + '</a>';
+      var cn = C.sectionCounts(ls, f);
+      h += '<li class="nt-file' + (open ? ' open' : '') + '"><a href="#/' + f.slug + '"' + (open ? ' aria-current="page"' : '') + '><span>' + C.escHtml(f.title) + '</span>' + badge(cn.total) + '</a>';
+      if (open) counts = cn.byId;
       if (open) {
         h += '<ul class="nt-h2s">';
         var inH2 = false;
         f.toc.forEach(function (t) {
           if (t.level === 2) {
             if (inH2) h += '</ul></li>';
-            h += '<li class="nt-h2" data-id="' + t.id + '"><a href="#/' + f.slug + '/' + t.id + '" data-id="' + t.id + '">' + dotFor(objFromId(t.id)) + '<span>' + C.escHtml(t.text) + '</span></a><ul class="nt-h3s">';
+            h += '<li class="nt-h2" data-id="' + t.id + '"><a href="#/' + f.slug + '/' + t.id + '" data-id="' + t.id + '">' + dotFor(objFromId(t.id)) + '<span>' + C.escHtml(t.text) + '</span>' + badge(counts[t.id]) + '</a><ul class="nt-h3s">';
             inH2 = true;
-          } else if (inH2) h += '<li class="nt-h3"><a href="#/' + f.slug + '/' + t.id + '" data-id="' + t.id + '">' + C.escHtml(t.text) + '</a></li>';
+          } else if (inH2) h += '<li class="nt-h3"><a href="#/' + f.slug + '/' + t.id + '" data-id="' + t.id + '"><span>' + C.escHtml(t.text) + '</span>' + badge(counts[t.id]) + '</a></li>';
         });
         if (inH2) h += '</ul></li>';
         h += '</ul>';
@@ -214,6 +236,8 @@
       h += '</li>';
     });
     elTree.innerHTML = h + '</ul>';
+    elHlink.classList.toggle('cur', !cur); if (!cur) elHlink.setAttribute('aria-current', 'page'); else elHlink.removeAttribute('aria-current');
+    elHlink.querySelector('.n').textContent = '(' + groupedHL().total + ')';
     renderWeak();
   }
   function spy() {
@@ -221,6 +245,7 @@
     var line = (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--g-hdr')) || 57) + 24, act = null;
     for (var i = 0; i < headings.length; i++) { if (headings[i].getBoundingClientRect().top <= line) act = headings[i]; else break; }
     var id = act ? act.id : null, h2id = null;
+    if (spyHold) { if (Math.abs(window.scrollY - spyHold.y) < 2) { act = document.getElementById(spyHold.id) || act; id = act ? act.id : id; } else spyHold = null; }
     if (act) { var k = headings.indexOf(act); while (k >= 0 && headings[k].tagName !== 'H2') k--; h2id = k >= 0 ? headings[k].id : null; }
     Array.prototype.forEach.call(elTree.querySelectorAll('.nt-h2'), function (li) { li.classList.toggle('active', li.getAttribute('data-id') === h2id); });
     var prev = elTree.querySelector('a.cur'); if (prev && prev.getAttribute('data-id') === id) return;
@@ -247,9 +272,11 @@
     }
     elWeak.innerHTML = h;
   }
-  function refreshReadiness() { loadReadiness(); if (cur) buildTree(); spy(); }
+  function refreshReadiness() { loadReadiness(); syncHL(); return refreshReadiness2(); }
+  function refreshReadiness2() { buildTree(); spy(); }
   window.addEventListener('focus', refreshReadiness);
-  window.addEventListener('storage', refreshReadiness);
+  /* another tab changed the store: also redraw the Highlighted page if it is open (not on focus: that would drop keyboard focus) */
+  window.addEventListener('storage', function (e) { refreshReadiness(); if (!cur && (!e.key || e.key === HLK)) renderHighlights(); });
 
   /* ---------- search UI ---------- */
   var results = [], sel = -1, qTimer = 0;
@@ -308,12 +335,156 @@
     e.preventDefault(); openResult(+a.getAttribute('data-i'));
   });
 
+
+  /* ---------- paragraph highlights ---------- */
+  var HLK = 'secplus.highlights', hl = Object.create(null), blockByKey = {}, liveCache = {};
+  var MARKER = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false"><path d="M9.5 2.5l4 4-6 6H3.5v-4z M8 4l4 4 M2.5 14h11" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  function loadHL() {
+    hl = Object.create(null);   /* no prototype: a stored key such as "__proto__" or "constructor" stays plain data */
+    try {
+      var o = JSON.parse(localStorage.getItem(HLK) || '{}');
+      if (o && typeof o === 'object' && !Array.isArray(o)) Object.keys(o).forEach(function (k) { var e = o[k]; if (k !== '__proto__' && e && typeof e === 'object' && typeof e.file === 'string' && typeof e.text === 'string') hl[k] = e; });
+    } catch (e) { hl = Object.create(null); }
+  }
+  /* false when the browser refuses (quota, private mode, storage disabled): the change still applies for this visit */
+  function saveHL() { try { localStorage.setItem(HLK, JSON.stringify(hl)); return true; } catch (e) { return false; } }
+  function plainText(s) { return String(s).replace(/\s+/g, ' ').trim(); }
+  function headingPlain(el) { var c = el.cloneNode(true); Array.prototype.forEach.call(c.querySelectorAll('.hanchor,.hl-mark'), function (x) { x.remove(); }); return plainText(c.textContent); }
+  function blockText(el) {
+    if (el.tagName === 'TR') return plainText(Array.prototype.map.call(el.cells, function (c) { return plainText(c.textContent); }).join(' | '));
+    /* concatenate without separators: the rendered page splits text nodes around tooltips (<abbr>), the detached parse does not,
+       and both must give the same text (and key); a nested list is left out (its items are blocks of their own) */
+    if (el.tagName === 'LI') { var t = ''; Array.prototype.forEach.call(el.childNodes, function (n) { if (n.nodeType === 3 || (n.nodeType === 1 && !/^(UL|OL)$/.test(n.tagName))) t += n.textContent; }); return plainText(t); }
+    return plainText(el.textContent);
+  }
+  /* highlightable blocks of a chapter in document order (same walk for the rendered page and for a detached parse of the chapter) */
+  function scanBlocks(root, slug) {
+    var els = root.querySelectorAll('h1,h2,h3,p,li,blockquote,tr'), sec = { id: '', text: '' }, seen = {}, out = [];
+    Array.prototype.forEach.call(els, function (el) {
+      var tag = el.tagName;
+      if (tag === 'H1' || tag === 'H2' || tag === 'H3') { sec = { id: el.id, text: headingPlain(el) }; return; }
+      if (tag === 'TR') { if (!el.cells.length || (el.parentNode && el.parentNode.tagName === 'THEAD')) return; }
+      else if (el.closest('tr')) return;
+      if (tag === 'P' && el.parentNode.closest && el.parentNode.closest('blockquote,li')) return;
+      var text = blockText(el); if (!text) return;
+      var base = C.hlKey(slug, sec.id, text), n = seen[base] = (seen[base] || 0) + 1;
+      /* saved text: first 300 chars, with an ellipsis when cut (the key always uses the full text) */
+      out.push({ el: el, key: n > 1 ? base + '~' + n : base, text: text.length > 300 ? text.slice(0, 299).replace(/\s+$/, '') + '…' : text, section: sec.id, heading: sec.text });
+    });
+    return out;
+  }
+  function decorateBlocks(doc, f) {
+    blockByKey = {};
+    scanBlocks(doc, f.slug).forEach(function (b) {
+      blockByKey[b.key] = b;
+      var el = b.el, isRow = el.tagName === 'TR', host = isRow ? el.cells[0] : el, btn = document.createElement('button');
+      el.setAttribute('data-hl', b.key); el.classList.add(isRow ? 'hl-row' : 'hl-block'); if (isRow) host.classList.add('hl-host');
+      btn.type = 'button'; btn.className = 'hl-btn'; btn.innerHTML = MARKER; b.btn = btn;
+      host.insertBefore(btn, host.firstChild);
+      setPressed(b, !!hl[b.key]);
+    });
+  }
+  function setPressed(b, on) {
+    b.el.classList.toggle('hl-on', on);
+    b.btn.setAttribute('aria-pressed', String(on));
+    b.btn.setAttribute('aria-label', on ? 'Remove highlight' : 'Highlight this paragraph');
+    b.btn.title = on ? 'Remove highlight' : 'Highlight this paragraph';
+  }
+  /* keys of every block in the current build, for the chapters that have saved highlights: {key: order} */
+  function liveMap() {
+    var need = {}, live = {};
+    Object.keys(hl).forEach(function (k) { need[hl[k].file] = true; });
+    G.files.forEach(function (f, fi) {
+      if (!need[f.slug]) return;
+      var keys = liveCache[f.slug];
+      if (!keys) { var d = document.createElement('div'); d.innerHTML = f.html; keys = liveCache[f.slug] = scanBlocks(d, f.slug).map(function (b) { return b.key; }); }
+      keys.forEach(function (k, i) { live[k] = fi * 100000 + i; });
+    });
+    return live;
+  }
+  function groupedHL() { return C.groupHighlights(hl, G, liveMap()); }
+  function liveStore() { var live = liveMap(), o = {}; Object.keys(hl).forEach(function (k) { if (live.hasOwnProperty(k)) o[k] = hl[k]; }); return o; }
+  function badge(n) { return n ? '<span class="hl-badge" title="' + n + ' highlighted">' + n + '</span>' : ''; }
+  function updateMarks() {
+    if (!cur) return;
+    var cn = C.sectionCounts(liveStore(), cur).byId;
+    headings.forEach(function (h) {
+      var old = h.querySelector('.hl-mark'); if (old) old.remove();
+      var n = cn[h.id]; if (!n) return;
+      var m = document.createElement('span'); m.className = 'hl-mark'; m.title = n + ' highlighted'; m.setAttribute('role', 'img'); m.setAttribute('aria-label', n + ' highlighted'); m.innerHTML = MARKER;
+      var a = h.querySelector('.hanchor'); h.insertBefore(m, a || null);
+    });
+  }
+  function refreshHL() { updateMarks(); buildTree(); spy(); }
+  function toggleHL(key) {
+    var b = blockByKey[key]; if (!b || !cur) return;
+    if (hl[key]) { delete hl[key]; elLive.textContent = 'Highlight removed'; }
+    else { hl[key] = { file: cur.slug, section: b.section, heading: b.heading, text: b.text, at: new Date().toISOString() }; elLive.textContent = 'Highlighted'; }
+    var saved = saveHL(); setPressed(b, !!hl[key]); refreshHL();
+    if (!saved) elLive.textContent += ' (not saved: this browser blocks storage)';
+  }
+  function syncHL() {
+    loadHL();
+    Object.keys(blockByKey).forEach(function (k) { setPressed(blockByKey[k], !!hl[k]); });
+    if (cur) updateMarks();
+  }
+  elMain.addEventListener('click', function (e) {
+    var b = e.target.closest('.hl-btn'); if (!b) return;
+    var host = b.closest('[data-hl]'); if (host) toggleHL(host.getAttribute('data-hl'));
+  });
+
+  /* ---------- Highlighted page ---------- */
+  var confirmClear = false;
+  function renderHighlights() {
+    var res = groupedHL(), h = '<section class="g-hlpage"><h1>Highlighted</h1>';
+    h += '<div class="hl-toolbar"><button type="button" class="btn small" data-act="hl-export"' + (res.total ? '' : ' disabled') + '>Export as Markdown</button>';
+    if (confirmClear && res.total) h += '<span class="hl-confirm">Remove all ' + res.total + ' highlights? <button type="button" class="btn small danger" data-act="hl-clear-yes">Yes, clear all</button> <button type="button" class="btn small" data-act="hl-clear-no">Cancel</button></span>';
+    else h += '<button type="button" class="btn small danger" data-act="hl-clear"' + (res.total ? '' : ' disabled') + '>Clear all</button>';
+    h += '</div>';
+    function item(it, file, sec, canView, flashIt) {
+      return '<li class="hl-item" data-key="' + C.escHtml(it.key) + '"><p class="hl-text">' + C.escHtml(it.text) + '</p><div class="hl-actions">' +
+        (canView ? '<a class="hl-go" href="#/' + file + '/' + encodeURIComponent(sec) + (flashIt ? '?hl=' + encodeURIComponent(it.key) : '') + '">View in context</a>' : '') +
+        '<button type="button" class="btn small" data-act="hl-remove" data-key="' + C.escHtml(it.key) + '">Remove</button></div></li>';
+    }
+    if (!res.total) h += '<p class="hl-empty">Nothing highlighted yet. Hover a paragraph, list item, callout or table row in any chapter and press the marker button in the left margin (always visible on touch screens). Highlights are saved in this browser only.</p>';
+    res.groups.forEach(function (g) {
+      h += '<h2 class="hl-chap">' + C.escHtml(g.title) + '</h2>';
+      g.sections.forEach(function (s) {
+        h += '<h3 class="hl-sec">' + C.escHtml(s.heading) + '</h3><ul class="hl-items">';
+        s.items.forEach(function (it) { h += item(it, g.file, s.id, true, true); });
+        h += '</ul>';
+      });
+    });
+    if (res.orphans.length) {
+      h += '<h2 class="hl-chap">No longer found</h2><p class="hl-note">The text of these paragraphs changed in a newer version of the guide.</p><ul class="hl-items">';
+      res.orphans.forEach(function (it) { h += item(it, it.file, it.section, it.canView, false); });
+      h += '</ul>';
+    }
+    elMain.innerHTML = h + '</section>';
+  }
+  function exportMd() {
+    var md = C.highlightsMarkdown(groupedHL()), blob = new Blob([md], { type: 'text/markdown' }), url = URL.createObjectURL(blob), a = document.createElement('a');
+    a.href = url; a.download = 'secplus-highlights.md'; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { try { URL.revokeObjectURL(url); } catch (e) {} }, 1500);
+  }
+  elMain.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-act]'); if (!b || cur) return;
+    var act = b.getAttribute('data-act');
+    if (act === 'hl-remove') { delete hl[b.getAttribute('data-key')]; saveHL(); }
+    else if (act === 'hl-export') { exportMd(); return; }
+    else if (act === 'hl-clear') { confirmClear = true; renderHighlights(); var y = elMain.querySelector('[data-act=hl-clear-yes]'); if (y) y.focus(); return; }
+    else if (act === 'hl-clear-no') { confirmClear = false; renderHighlights(); return; }
+    else if (act === 'hl-clear-yes') { hl = Object.create(null); saveHL(); confirmClear = false; }
+    else return;
+    renderHighlights(); buildTree();
+  });
+
   /* ---------- drawer, keys, copy-link ---------- */
   function openDrawer() { elSide.classList.add('open'); elBack.hidden = false; elMenu.setAttribute('aria-expanded', 'true'); }
   function closeDrawer() { elSide.classList.remove('open'); elBack.hidden = true; elMenu.setAttribute('aria-expanded', 'false'); }
   elMenu.addEventListener('click', function () { if (elSide.classList.contains('open')) closeDrawer(); else openDrawer(); });
   elBack.addEventListener('click', closeDrawer);
-  elSide.addEventListener('click', function (e) { if (e.target.closest('.nt-h2s a, .nt-file > a, .g-weak a')) closeDrawer(); });
+  elSide.addEventListener('click', function (e) { if (e.target.closest('.nt-h2s a, .nt-file > a, .g-weak a, .g-hlink')) closeDrawer(); });
   function typing(t) { return t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable); }
   document.addEventListener('keydown', function (e) {
     if (e.ctrlKey || e.metaKey || e.altKey) return;
@@ -326,6 +497,7 @@
     if (typing(e.target)) return;
     if (e.key === '/') { e.preventDefault(); if (window.innerWidth < 900) openDrawer(); elQ.focus(); elQ.select(); }
     else if (e.key === '[' || e.key === ']') {
+      if (!cur) return;
       var f = G.files[fileIndex(cur) + (e.key === ']' ? 1 : -1)]; if (f) go(f.slug);
     }
   });
@@ -339,7 +511,7 @@
 
   /* ---------- init ---------- */
   function measureHeader() { var h = document.querySelector('.site-header'); if (h) document.documentElement.style.setProperty('--g-hdr', h.offsetHeight + 'px'); }
-  measureHeader(); loadReadiness();
+  measureHeader(); loadReadiness(); loadHL();
   window.addEventListener('hashchange', onRoute);
   onRoute();
   document.documentElement.dataset.ready = '1';

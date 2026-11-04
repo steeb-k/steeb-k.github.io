@@ -198,4 +198,61 @@ t('links between the quiz and the guide name index.html (a bare "guide/" or "../
   ['index.html', 'tests/dev.html', 'guide/index.html', 'js/ui.js', 'guide/guide.js'].forEach(f =>
     assert(!/href=(["'])(?:\.\.\/)*(?:guide\/)?\1|'(?:\.\.\/)?guide\/'/.test(rd(f)), 'directory-style link in ' + f));
 });
+t('acronymMeta: every 91 row has expansion, meaning and anchor; alternate spellings share a row', () => {
+  const D = global.window.SEC_GUIDE, M = D.acronymMeta;
+  assert(M && Object.keys(M).length > 300);
+  assert.strictEqual(M.SIEM.expansion, 'Security Information and Event Management');
+  assert(/correlates logs/.test(M.SIEM.meaning)); assert.strictEqual(M.SIEM.anchor, 'acr-siem');
+  assert(M.GCMP.meaning.length > 10);
+  assert.strictEqual(M.IMAP.anchor, M.IMAP4.anchor);
+  Object.keys(M).forEach(k => { assert(M[k].expansion && M[k].meaning && /^acr-/.test(M[k].anchor), k); });
+});
+const HDATA = { files: [{ slug: 'a', title: 'Alpha', toc: [{ level: 2, id: 'a1' }, { level: 3, id: 'a1x' }, { level: 2, id: 'a2' }] }, { slug: 'b', title: 'Beta', toc: [{ level: 2, id: 'b1' }] }],
+  sections: [{ file: 'a', id: 'a-top', title: 'Alpha' }, { file: 'a', id: 'a1', title: 'A one' }, { file: 'a', id: 'a1x', title: 'A one x' }, { file: 'a', id: 'a2', title: 'A two' }, { file: 'b', id: 'b1', title: 'B one' }] };
+t('hlKey: stable, case/whitespace-insensitive, 240-char window, scoped by file and section', () => {
+  const k = G.hlKey('a', 'a1', 'Hello   World');
+  assert(/^a:a1:[0-9a-f]{8}$/.test(k));
+  assert.strictEqual(k, G.hlKey('a', 'a1', ' hello world\n'));
+  assert.notStrictEqual(k, G.hlKey('a', 'a2', 'Hello World')); assert.notStrictEqual(k, G.hlKey('b', 'a1', 'Hello World')); assert.notStrictEqual(k, G.hlKey('a', 'a1', 'Hello Worlds'));
+  const long = 'x'.repeat(240);
+  assert.strictEqual(G.hlKey('a', 'a1', long + 'tail'), G.hlKey('a', 'a1', long + 'other'));
+});
+t('sectionCounts: H3 own, H2 aggregates its H3s, intro only in total, junk ignored', () => {
+  const st = { k1: { file: 'a', section: 'a1x', text: 't' }, k2: { file: 'a', section: 'a1', text: 't' }, k3: { file: 'a', section: 'a-top', text: 't' }, k4: { file: 'b', section: 'b1', text: 't' }, k5: null, k6: 7, k7: { file: 'a' } };
+  const c = G.sectionCounts(st, HDATA.files[0]);
+  assert.deepStrictEqual(c, { total: 3, byId: { a1: 2, a1x: 1 } });
+  assert.deepStrictEqual(G.sectionCounts(null, HDATA.files[0]), { total: 0, byId: {} });
+});
+t('groupHighlights: chapter -> section order, items in document order, orphans, junk ignored', () => {
+  const e = (file, section, text, at) => ({ file, section, heading: 'h', text, at });
+  const st = { k1: e('b', 'b1', 'B text', '2026-01-01'), k2: e('a', 'a2', 'second', '2026-01-02'), k3: e('a', 'a1', 'later', '2026-01-04'), k4: e('a', 'a1', 'earlier', '2026-01-03'),
+    k5: e('a', 'a-top', 'intro', '2026-01-05'), k6: e('a', 'gone', 'lost section', '2026-01-06'), k7: e('zzz', 'x', 'lost chapter', '2026-01-07'), bad: 5, bad2: null, bad3: { file: 1 } };
+  const r = G.groupHighlights(st, HDATA);
+  assert.strictEqual(r.total, 7);
+  assert.deepStrictEqual(r.groups.map(g => g.title), ['Alpha', 'Beta']);
+  assert.deepStrictEqual(r.groups[0].sections.map(s => s.heading), ['Introduction', 'A one', 'A two']);
+  assert.deepStrictEqual(r.groups[0].sections[1].items.map(i => i.text), ['earlier', 'later']);   // no live map: by time
+  assert.deepStrictEqual(r.orphans.map(o => [o.key, o.canView]), [['k6', false], ['k7', false]]);
+  const live = { k1: 5, k2: 3, k3: 1, k4: 2, k5: 0 };
+  const r2 = G.groupHighlights(st, HDATA, live);
+  assert.deepStrictEqual(r2.groups[0].sections[1].items.map(i => i.key), ['k3', 'k4']);          // live map: document order
+  const r3 = G.groupHighlights(st, HDATA, { k1: 1, k3: 2 });                                    // k2, k4, k5 text changed: orphans with a still-existing section
+  assert.deepStrictEqual(r3.orphans.filter(o => o.canView).map(o => o.key).sort(), ['k2', 'k4', 'k5']);
+  assert.deepStrictEqual(G.groupHighlights(null, HDATA), { total: 0, groups: [], orphans: [] });
+});
+t('highlightsMarkdown: # / ## chapter / ### section / > text, orphans last', () => {
+  const st = { k1: { file: 'a', section: 'a1', heading: 'A one', text: 'First   point', at: '1' }, k2: { file: 'b', section: 'b1', heading: 'B one', text: 'Beta point', at: '2' }, k3: { file: 'a', section: 'gone', heading: 'x', text: 'Old text', at: '3' } };
+  assert.strictEqual(G.highlightsMarkdown(G.groupHighlights(st, HDATA)),
+    '# Highlights\n\n## Alpha\n\n### A one\n\n> First point\n\n## Beta\n\n### B one\n\n> Beta point\n\n## No longer found\n\n> Old text\n');
+  assert.strictEqual(G.highlightsMarkdown(G.groupHighlights({}, HDATA)), '# Highlights\n\nNothing highlighted yet.\n');
+});
+t('mdText: literal text stays literal in Markdown (no raw HTML, emphasis, code, links or block markers)', () => {
+  const cases = [['<script> in input field', '\\<script> in input field'], ['masked ****-1234', 'masked \\*\\*\\*\\*-1234'], ['*.example.com', '\\*.example.com'],
+    ['snake_case and _emph_', 'snake_case and \\_emph\\_'], ['`code` [x](y)', '\\`code\\` \\[x\\](y)'], ['a\\b', 'a\\\\b'], ['&lt; vs AT&T', '\\&lt; vs AT&T'],
+    ['1. first', '1\\. first'], ['2) second', '2\\) second'], ['- dash', '\\- dash'], ['# hash', '\\# hash'], ['> quote', '\\> quote'], ['+ plus', '\\+ plus'],
+    ['RADIUS | UDP 1812 | AAA', 'RADIUS | UDP 1812 | AAA'], ['5 > 3, x-y, 4.8 (100%)', '5 > 3, x-y, 4.8 (100%)'], ['multi\n  line\ttext', 'multi line text']];
+  cases.forEach(([i, o]) => assert.strictEqual(G.mdText(i), o, JSON.stringify(i)));
+  const st = { k1: { file: 'a', section: 'a1', heading: 'A one', text: '<b>bold</b> *star*', at: '1' } };
+  assert.strictEqual(G.highlightsMarkdown(G.groupHighlights(st, HDATA)), '# Highlights\n\n## Alpha\n\n### A one\n\n> \\<b>bold\\</b> \\*star\\*\n');
+});
 console.log(process.exitCode ? 'FAILED' : `all ${n} tests passed`);

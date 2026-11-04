@@ -184,7 +184,82 @@ var GuideCore = (function () {
       .sort(function (a, b) { return a.pct - b.pct || a.obj.localeCompare(b.obj, undefined, { numeric: true }); }).slice(0, n || 5);
   }
 
-  return { escHtml: escHtml, slugify: slugify, headingId: headingId, acronymRowId: acronymRowId, findObjectiveRefs: findObjectiveRefs,
+  /* ---------- highlights ---------- */
+  function normHl(text) { return String(text == null ? '' : text).toLowerCase().replace(/\s+/g, ' ').trim().slice(0, 240); }
+  function fnv1a(str) {
+    var h = 0x811c9dc5;
+    for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+    return ('00000000' + h.toString(16)).slice(-8);
+  }
+  /* stable block key: file ':' sectionId ':' FNV-1a of the lower-cased, whitespace-collapsed first 240 chars */
+  function hlKey(file, sectionId, text) { return file + ':' + sectionId + ':' + fnv1a(normHl(text)); }
+  function validHl(e) { return !!e && typeof e === 'object' && typeof e.file === 'string' && typeof e.text === 'string'; }
+  /* {total, byId}: per-chapter count; an H3 counts its own highlights, an H2 its own plus those of its H3s. Blocks above the first H2 only count in total. */
+  function sectionCounts(store, file) {
+    var own = {}, total = 0, byId = {};
+    Object.keys(store && typeof store === 'object' ? store : {}).forEach(function (k) {
+      var e = store[k];
+      if (!validHl(e) || e.file !== file.slug) return;
+      total++; own[e.section] = (own[e.section] || 0) + 1;
+    });
+    var h2 = null;
+    (file.toc || []).forEach(function (t) {
+      if (t.level === 2) { h2 = t.id; byId[t.id] = (byId[t.id] || 0) + (own[t.id] || 0); }
+      else if (t.level === 3) { byId[t.id] = own[t.id] || 0; if (h2) byId[h2] = (byId[h2] || 0) + (own[t.id] || 0); }
+    });
+    Object.keys(byId).forEach(function (k) { if (!byId[k]) delete byId[k]; });
+    return { total: total, byId: byId };
+  }
+  /* store: {key: {file, section, heading, text, at}}; data: SEC_GUIDE; live (optional): {key: documentOrderIndex} of blocks present in the current build.
+     Returns {total, groups:[{file, title, sections:[{id, heading, items:[{key,text,at}]}]}], orphans:[{key,file,section,heading,text,at,canView}]}.
+     An item is an orphan when its chapter or section is gone, or (with `live`) its key matches no block. canView = the section still exists. */
+  function groupHighlights(store, data, live) {
+    var files = (data && data.files) || [], fIdx = {}, secIdx = {}, tocIds = {};
+    files.forEach(function (f, i) { fIdx[f.slug] = i; tocIds[f.slug] = {}; (f.toc || []).forEach(function (t) { tocIds[f.slug][t.id] = true; }); });
+    ((data && data.sections) || []).forEach(function (s, i) { secIdx[s.file + '/' + s.id] = { i: i, title: s.title }; });
+    var byFile = {}, orphans = [], total = 0;
+    Object.keys(store && typeof store === 'object' ? store : {}).forEach(function (k) {
+      var e = store[k];
+      if (!validHl(e)) return;
+      total++;
+      var sec = secIdx[e.file + '/' + e.section], fi = fIdx.hasOwnProperty(e.file) ? fIdx[e.file] : -1;
+      var it = { key: k, file: e.file, section: String(e.section || ''), heading: String(e.heading || ''), text: e.text, at: String(e.at || '') };
+      if (fi < 0 || !sec || (live && !Object.prototype.hasOwnProperty.call(live, k))) { it.canView = fi >= 0 && !!sec; orphans.push(it); return; }
+      var g = byFile[e.file] = byFile[e.file] || { file: e.file, title: files[fi].title, fi: fi, secs: {} };
+      var sg = g.secs[e.section] = g.secs[e.section] || { id: e.section, i: sec.i, heading: tocIds[e.file][e.section] ? sec.title : 'Introduction', items: [] };
+      sg.items.push(it);
+    });
+    function ord(a, b) { return live ? (live[a.key] - live[b.key]) : (a.at < b.at ? -1 : a.at > b.at ? 1 : 0); }
+    var groups = Object.keys(byFile).map(function (k) { return byFile[k]; }).sort(function (a, b) { return a.fi - b.fi; }).map(function (g) {
+      return { file: g.file, title: g.title, sections: Object.keys(g.secs).map(function (k) { return g.secs[k]; }).sort(function (a, b) { return a.i - b.i; }).map(function (sg) {
+        sg.items.sort(ord); return { id: sg.id, heading: sg.heading, items: sg.items.map(function (x) { return { key: x.key, text: x.text, at: x.at }; }) };
+      }) };
+    });
+    orphans.sort(function (a, b) { return (fIdx[a.file] === undefined ? 99 : fIdx[a.file]) - (fIdx[b.file] === undefined ? 99 : fIdx[b.file]) || (a.at < b.at ? -1 : a.at > b.at ? 1 : 0); });
+    return { total: total, groups: groups, orphans: orphans };
+  }
+  /* plain text -> Markdown that renders as the same literal text: backslash-escape what would become HTML, emphasis, code or a link
+     ("<script>", "****-1234", "*.example.com"), and a leading marker that would turn the line into a heading, list or nested quote.
+     An underscore inside a word (snake_case) is literal in CommonMark and stays as is. */
+  function mdText(t) {
+    return String(t).replace(/\s+/g, ' ').trim()
+      .replace(/[\\`*<\[\]]/g, '\\$&')
+      .replace(/_/g, function (m, i, str) { return /[A-Za-z0-9]/.test(str[i - 1] || '') && /[A-Za-z0-9]/.test(str[i + 1] || '') ? m : '\\_'; })
+      .replace(/&(?=#?[A-Za-z0-9]+;)/g, '\\&').replace(/^(\d+)([.)])(?= |$)/, '$1\\$2').replace(/^([-+#>])/, '\\$1');
+  }
+  /* Markdown export: "# Highlights", "## <chapter>", "### <section>", then each text as a "> " block. Orphans go under "## No longer found". */
+  function highlightsMarkdown(res) {
+    var out = ['# Highlights', ''], q = function (t) { return '> ' + mdText(t); };
+    if (!res || (!(res.groups || []).length && !(res.orphans || []).length)) return out.concat(['Nothing highlighted yet.', '']).join('\n');
+    (res.groups || []).forEach(function (g) {
+      out.push('## ' + mdText(g.title), '');
+      g.sections.forEach(function (s) { out.push('### ' + mdText(s.heading), ''); s.items.forEach(function (it) { out.push(q(it.text), ''); }); });
+    });
+    if ((res.orphans || []).length) { out.push('## No longer found', ''); res.orphans.forEach(function (it) { out.push(q(it.text), ''); }); }
+    return out.join('\n');
+  }
+
+  return { hlKey: hlKey, mdText: mdText, sectionCounts: sectionCounts, groupHighlights: groupHighlights, highlightsMarkdown: highlightsMarkdown, escHtml: escHtml, slugify: slugify, headingId: headingId, acronymRowId: acronymRowId, findObjectiveRefs: findObjectiveRefs,
     tokenizeForTips: tokenizeForTips, buildSearchIndex: buildSearchIndex, search: search, snippet: snippet,
     wordIndex: wordIndex, readinessByObjective: readinessByObjective, readinessLevel: readinessLevel, weakSpots: weakSpots };
 })();

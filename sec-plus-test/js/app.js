@@ -108,7 +108,7 @@
     }
     syncTimer();
     paint(html, key);
-    if (r.name === 'quiz') tick(); /* apply the low/crit timer colour immediately, not on the next 500ms tick */
+    if (r.name === 'quiz') tick(); /* apply the low/crit timer color immediately, not on the next 500ms tick */
   }
 
 

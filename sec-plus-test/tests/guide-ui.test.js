@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* Headless-Chromium checks for the study guide UI (behaviour the unit tests cannot see).
+/* Headless-Chromium checks for the study guide UI (behavior the unit tests cannot see).
    Usage: node tests/guide-ui.test.js   (CHROMIUM=/path/to/chromium; skips with a note if Chromium is missing). Node 22+ (global WebSocket/fetch). */
 'use strict';
 const { spawn } = require('child_process'), fs = require('fs'), os = require('os'), path = require('path');

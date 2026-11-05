@@ -930,7 +930,7 @@ window.SEC_BANK.push(
     domain: 3,
     objective: "3.3",
     type: "multi",
-    question: "A records manager is cataloguing information assets. Which of the following pairings of an asset with its data type are correct? Choose THREE.",
+    question: "A records manager is cataloging information assets. Which of the following pairings of an asset with its data type are correct? Choose THREE.",
     options: ["A printed employee handbook: non-human-readable data","Court filings and contracts: legal information","A compiled executable binary: human-readable data","Patents and source code: intellectual property","Customer invoices and bank statements: financial information"],
     answer: [1,3,4],
     explanation: "Invoices are financial information, court documents are legal information, and patents or source code are intellectual property. A printed handbook is human-readable and a compiled binary is non-human-readable, so those two pairings are reversed.",

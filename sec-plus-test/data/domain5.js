@@ -1393,13 +1393,13 @@ window.SEC_BANK.push(
     "options": [
       "Automation",
       "Attestation",
-      "Acknowledgement",
+      "Acknowledgment",
       "Due diligence"
     ],
     "answer": [
       0
     ],
-    "explanation": "Automated scanning and ticketing provides continuous compliance monitoring at scale. Attestation is a formal declaration that requirements are met, acknowledgement is a user confirming they understand a policy, and due diligence is investigation before a decision.",
+    "explanation": "Automated scanning and ticketing provides continuous compliance monitoring at scale. Attestation is a formal declaration that requirements are met, acknowledgment is a user confirming they understand a policy, and due diligence is investigation before a decision.",
     "difficulty": 2,
     "tags": [
       "compliance monitoring",
@@ -1593,7 +1593,7 @@ window.SEC_BANK.push(
     "type": "single",
     "question": "A company requires every employee to sign a form each year confirming that they have read and understand the updated data handling policy. This signed form is an example of which compliance monitoring element?",
     "options": [
-      "Acknowledgement",
+      "Acknowledgment",
       "Due diligence",
       "Automation",
       "External compliance reporting"
@@ -1601,10 +1601,10 @@ window.SEC_BANK.push(
     "answer": [
       0
     ],
-    "explanation": "Acknowledgement is a user's confirmation that they have received and understand a policy. Due diligence is pre-decision investigation, automation uses tools to check compliance, and external reporting goes to regulators or other outside parties.",
+    "explanation": "Acknowledgment is a user's confirmation that they have received and understand a policy. Due diligence is pre-decision investigation, automation uses tools to check compliance, and external reporting goes to regulators or other outside parties.",
     "difficulty": 2,
     "tags": [
-      "acknowledgement",
+      "acknowledgment",
       "compliance monitoring"
     ]
   },

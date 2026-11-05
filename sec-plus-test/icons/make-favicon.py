@@ -17,7 +17,7 @@ P_H = int(sys.argv[4]) if len(sys.argv) > 4 else 200    # + height in px
 INK, PAPER = '#080808', '#f0f0f0'
 
 def glyph_path(font_path, ch, height, cx, cy):
-    """SVG path for one glyph scaled so its bbox height == height, centred on (cx, cy)."""
+    """SVG path for one glyph scaled so its bbox height == height, centered on (cx, cy)."""
     f = TTFont(font_path)
     gs = f.getGlyphSet(); name = f.getBestCmap()[ord(ch)]; g = gs[name]
     bp = BoundsPen(gs); g.draw(bp); x0, y0, x1, y1 = bp.bounds
@@ -31,7 +31,7 @@ def glyph_path(font_path, ch, height, cx, cy):
 
 inner = OUT                       # inset of the black segment
 irx = max(RX - OUT, 60)
-s_cx = (0 + DIV) / 2              # S centred in the whole white area (outline merges with the segment, as in the pill)
+s_cx = (0 + DIV) / 2              # S centered in the whole white area (outline merges with the segment, as in the pill)
 p_cx = (DIV + (W - OUT)) / 2
 cy = W / 2
 s_path = glyph_path(SANS, 'S', S_H, s_cx, cy)

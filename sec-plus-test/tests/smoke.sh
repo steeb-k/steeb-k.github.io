@@ -39,6 +39,11 @@ fi
 if grep -nEi '<(link|script)[^>]*(href|src)=["'"'"']?(https?:)?//' "$FILE" >"$TMP/ext.txt"; then
   echo "FAIL: external link/script/preload tag in $FILE:"; cat "$TMP/ext.txt"; fail=1
 fi
+# one header everywhere: nav links are exactly Guide, Practice, GitHub; only GitHub opens a new tab (with the external icon)
+NAV=$(grep -o '<nav aria-label="Main">.*</nav>' "$FILE" | sed 's/<svg[^>]*>.*<\/svg>//' | sed 's/<[^>]*>/ /g' | tr -s ' ' | sed 's/^ //; s/ $//')
+[ "$NAV" = "Guide Practice GitHub" ] || { echo "FAIL: header nav in $FILE is '$NAV', expected 'Guide Practice GitHub'"; fail=1; }
+[ "$(grep -o '<nav aria-label="Main">.*</nav>' "$FILE" | grep -o 'target="_blank"' | wc -l)" = "1" ] || { echo "FAIL: exactly one header link (GitHub) should open a new tab in $FILE"; fail=1; }
+grep -q 'class="hwrap"' "$FILE" || { echo "FAIL: header in $FILE does not use the shared .hwrap layout"; fail=1; }
 # the http(s)-only font preload must point at the self-hosted Plex files (relative path differs per page)
 grep -q "fonts/ibm-plex/IBMPlexSans-' + w + '.woff2'" "$FILE" || { echo "FAIL: IBM Plex preload script missing in $FILE"; fail=1; }
 [ $fail -eq 0 ] && echo "smoke OK: $FILE" || { echo "smoke FAILED: $FILE"; exit 1; }

@@ -1,5 +1,6 @@
 /* Sec+ 701 practice — dark pastel, self-hosted IBM Plex (see fonts/ibm-plex/plex.css). No external assets. */
 :root {
+  --page-w: 1240px; --side-w: 280px; --col-w: 820px;  /* site grid: header + guide layout; reading column on every page */
   --font-sans: "IBM Plex Sans", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
   --hdr-bg: rgba(20, 20, 20, .62);
@@ -67,8 +68,13 @@ input[type=checkbox], input[type=radio] { accent-color: var(--accent); }
 h1:focus { outline: none; }
 
 /* header */
-.site-header { display: flex; justify-content: space-between; align-items: center; gap: var(--s4); background: var(--bg-1); border-bottom: 1px solid var(--line);
-  padding: var(--s3) max(16px, calc((100% - 920px) / 2 + 16px)); position: sticky; top: 0; z-index: 5; }
+/* One header for the whole site. Its inner grid mirrors the guide's layout (280px sidebar column + content column, 1240px max):
+   the pill sits at the sidebar column's left edge and the nav at the content column's right edge, on every page, so neither
+   moves when switching between Guide and Practice. */
+.site-header { display: block; background: var(--bg-1); border-bottom: 1px solid var(--line); padding: var(--s3) 0; position: sticky; top: 0; z-index: 5; }
+.hwrap { display: grid; grid-template-columns: var(--side-w) minmax(0, 1fr); align-items: center; max-width: var(--page-w); margin: 0 auto; width: 100%; }
+.hwrap .brand { margin-left: 16px; justify-self: start; }
+.hnav { max-width: var(--col-w); width: 100%; margin: 0 auto; padding: 0 24px; display: flex; justify-content: flex-end; }
 @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .site-header { background: var(--hdr-bg); -webkit-backdrop-filter: blur(14px) saturate(1.15); backdrop-filter: blur(14px) saturate(1.15); }
 }
@@ -86,7 +92,7 @@ h1:focus { outline: none; }
 .brand-l { background: var(--ink); color: var(--bg-0); padding: 5px 10px 5px 12px; }
 .brand-r { background: var(--bg-0); color: var(--ink); padding: 5px 12px 5px 10px; font-family: var(--font-mono); }
 @media (forced-colors: active) { .brand-pill { box-shadow: none; border: 1px solid CanvasText; } }
-main { max-width: 920px; margin: 0 auto; padding: var(--s4) 16px var(--s6); }
+main { max-width: var(--col-w); margin: 0 auto; padding: var(--s5) 24px var(--s7); }
 
 /* cards & panels */
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--s4); }
@@ -273,6 +279,13 @@ td.barcell { min-width: 90px; width: 22%; }
 .rev-opts li.is-wrong { background: var(--bad-tint); border-color: var(--bad); }
 .flagtag { color: var(--warn); font-weight: 600; }
 
+@media (max-width: 899px) {
+  .hwrap { display: flex; gap: var(--s4); padding: 0 16px; justify-content: space-between; }
+  .hwrap .brand { margin-left: 0; }
+  .hnav { width: auto; margin: 0 0 0 auto; padding: 0; }
+  .site-header nav { gap: var(--s3); }
+  main { padding: var(--s4) 16px var(--s6); }
+}
 @media (max-width: 560px) {
   main { padding: var(--s3) 16px var(--s5); }
   h1 { font-size: 22px; }

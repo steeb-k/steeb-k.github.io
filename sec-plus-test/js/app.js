@@ -107,19 +107,10 @@
       default: html = UI.notFound();
     }
     syncTimer();
-    markNav(r.name);
     paint(html, key);
     if (r.name === 'quiz') tick(); /* apply the low/crit timer colour immediately, not on the next 500ms tick */
   }
 
-  /* header nav: mark the link for the current route (History/Settings) with aria-current="page" */
-  function markNav(name) {
-    var links = document.querySelectorAll('.site-header nav a');
-    for (var i = 0; i < links.length; i++) {
-      var on = (links[i].getAttribute('href') || '').replace(/^#\/?/, '') === name;
-      if (on) links[i].setAttribute('aria-current', 'page'); else links[i].removeAttribute('aria-current');
-    }
-  }
 
   function paint(html, key) {
     var active = document.activeElement, focusId = S.focusId || (active && active.id) || null, sameRoute = key === S.routeKey;

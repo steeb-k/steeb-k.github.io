@@ -3,7 +3,7 @@
    Usage: node tests/guide-ui.test.js   (CHROMIUM=/path/to/chromium; skips with a note if Chromium is missing). Node 22+ (global WebSocket/fetch). */
 'use strict';
 const { spawn } = require('child_process'), fs = require('fs'), os = require('os'), path = require('path');
-const ROOT = path.resolve(__dirname, '..'), SITE_DIR = path.resolve(ROOT, '..'), G = 'file://' + ROOT + '/guide/index.html';
+const ROOT = path.resolve(__dirname, '..'), SITE_DIR = path.resolve(ROOT, '..'), G = 'file://' + ROOT + '/guide/index.html', ROOT_URL = 'file://' + ROOT;
 const CHROME = process.env.CHROMIUM || '/usr/bin/chromium';
 if (!fs.existsSync(CHROME) || typeof WebSocket === 'undefined') { console.log('SKIP: Chromium or global WebSocket not available'); process.exit(0); }
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -62,6 +62,39 @@ const below = id => `(()=>{const h=document.getElementById('${id}'); return h.ge
       s.scrollTop=0; const q0=document.getElementById('g-q').getBoundingClientRect().top; s.scrollTop=200; const q1=document.getElementById('g-q').getBoundingClientRect().top;
       return {t0, q0, hb, q1, curTop:cur.top, curBot:cur.bottom, vh:innerHeight}})()`);
     ok(sv.t0 === 0 && sv.q0 >= sv.hb + 8 && sv.q1 < sv.hb && sv.curTop >= sv.hb && sv.curBot <= sv.vh, 'sidebar: scrolls under the header, content starts below it, current heading stays visible', JSON.stringify(sv));
+    /* shared header: pill and nav links sit at identical positions on the guide and the practice pages (desktop, laptop, phone) */
+    const HDR = `(()=>{const r=e=>{const b=e.getBoundingClientRect(); return [Math.round(b.left), Math.round(b.top), Math.round(b.right), Math.round(b.bottom)]};
+      return {pill:r(document.querySelector('.brand-pill')), nav:r(document.querySelector('.site-header nav')), links:[...document.querySelectorAll('.site-header nav a')].map(a=>[a.textContent.trim(), ...r(a)]),
+        texts:[...document.querySelectorAll('.site-header nav a')].map(a=>a.textContent.trim()).join(' '), blank:[...document.querySelectorAll('.site-header nav a[target=_blank]')].map(a=>a.textContent.trim()).join(' '),
+        cur:[...document.querySelectorAll('.site-header nav a[aria-current]')].map(a=>a.textContent.trim()).join(' '), ext:document.querySelectorAll('.site-header nav a.ext-link .ext').length}})()`;
+    for (const [w, h] of [[1280, 800], [1000, 800], [390, 844]]) {
+      const mobile = w < 900;
+      const pg = await (await B.page(G, { w, h, mobile })).eval(HDR), pq = await (await B.page(ROOT_URL + '/index.html', { w, h, mobile })).eval(HDR);
+      const same = JSON.stringify(pg.pill) === JSON.stringify(pq.pill) && JSON.stringify(pg.links) === JSON.stringify(pq.links);
+      ok(same && pg.texts === 'Guide Practice GitHub' && pq.texts === 'Guide Practice GitHub' && pg.blank === 'GitHub' && pq.blank === 'GitHub' && pg.ext === 1 && pq.ext === 1 && pg.cur === 'Guide' && pq.cur === 'Practice',
+        `header ${w}: pill and links at identical positions on guide and practice; links Guide/Practice/GitHub, only GitHub external`, JSON.stringify([pg, pq]));
+    }
+    p = await B.page(G);
+    /* search: results persist after opening one (opened item selected); Back to outline, Escape, or an empty box restore the tree */
+    const sr = await p.eval(`(async()=>{const q=document.getElementById('g-q'), res=document.getElementById('g-results'), top=document.getElementById('g-res-top'), tree=document.getElementById('g-tree');
+      const type=v=>{q.value=v; q.dispatchEvent(new Event('input'));}; const wait=ms=>new Promise(r=>setTimeout(r,ms));
+      type('tls'); await wait(200); const shown=!res.hidden && !top.hidden && tree.hidden; document.querySelectorAll('.g-res')[1].click(); await wait(300);
+      const after={q:q.value, res:!res.hidden, top:!top.hidden, tree:!tree.hidden, hash:location.hash, sel:document.querySelector('.g-res[aria-selected="true"]').getAttribute('data-i')};
+      document.getElementById('g-res-back').click(); await wait(50); const back={q:q.value, res:!res.hidden, top:!top.hidden, tree:!tree.hidden};
+      type('tls'); await wait(200); document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true})); await wait(50); const esc={q:q.value, res:!res.hidden, tree:!tree.hidden};
+      type('tls'); await wait(200); type(''); await wait(200); const empty={res:!res.hidden, tree:!tree.hidden};
+      return {shown, after, back, esc, empty}})()`);
+    ok(sr.shown && sr.after.q === 'tls' && sr.after.res && sr.after.top && !sr.after.tree && /^#\/acronyms\//.test(sr.after.hash) && sr.after.sel === '1',
+      'search: results and query persist after opening a result, opened item selected', JSON.stringify(sr.after));
+    ok(sr.back.q === '' && !sr.back.res && !sr.back.top && sr.back.tree && sr.esc.q === '' && !sr.esc.res && sr.esc.tree && !sr.empty.res && sr.empty.tree,
+      'search: Back to outline, Escape and an empty box restore the outline', JSON.stringify([sr.back, sr.esc, sr.empty]));
+    /* How to use this guide: own route, rendered from the template, link at the top of the sidebar marked current */
+    p = await B.page(G + '#/how-to');
+    const ht = await p.eval(`(()=>{const h1=document.querySelector('.g-main .g-howto h1'); return {h1:h1&&h1.textContent, title:document.title, cur:document.getElementById('g-howlink').classList.contains('cur'),
+      aria:document.getElementById('g-howlink').getAttribute('aria-current'), hlCur:document.getElementById('g-hlink').classList.contains('cur'), banner:!!document.querySelector('.g-main .g-banner'), doc:!!document.querySelector('.g-main .g-doc'),
+      first:document.getElementById('g-howlink').compareDocumentPosition(document.getElementById('g-hlink')) & 4, kbd:document.querySelectorAll('.g-howto kbd').length}})()`);
+    ok(ht.h1 === 'How to use this guide' && /^How to use this guide/.test(ht.title) && ht.cur && ht.aria === 'page' && !ht.hlCur && !ht.banner && !ht.doc && ht.first && ht.kbd > 4,
+      'how-to page: renders from the template, link current and above Highlighted, no markdown banner', JSON.stringify(ht));
     /* tooltip stays inside the viewport, near the right edge and the bottom */
     for (const [w, h] of [[1280, 800], [390, 844]]) {
       p = await B.page(G + '#/ports-protocols', { w, h, mobile: w < 900 });

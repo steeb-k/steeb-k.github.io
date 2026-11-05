@@ -4,8 +4,9 @@
   var G = window.SEC_GUIDE, C = window.GuideCore, ACR = window.SEC_ACRONYMS || {}, OBJ = window.SEC_OBJECTIVES || {};
   var REPO = 'steeb-k/secplus-study-guide';
   var $ = function (id) { return document.getElementById(id); };
+  var page = null;  /* 'highlights' | 'howto' | null (a chapter) */
   var elMain = $('g-main'), elTree = $('g-tree'), elWeak = $('g-weak'), elQ = $('g-q'), elRes = $('g-results'), elSide = $('g-side'),
-    elTip = $('g-tooltip'), elMenu = $('g-menu'), elBack = $('g-backdrop'), elLive = $('g-live'), elHlink = $('g-hlink');
+    elTip = $('g-tooltip'), elMenu = $('g-menu'), elBack = $('g-backdrop'), elLive = $('g-live'), elHlink = $('g-hlink'), elHow = $('g-howlink'), elResTop = $('g-res-top');
   var bySlug = {}, byDomain = {};
   G.files.forEach(function (f) { bySlug[f.slug] = f; if (/^0[1-5]$/.test(f.id)) byDomain[+f.id.slice(1)] = f; });
   var cur = null, ready = {}, pendingHit = null, headings = [], spyRaf = 0, spyHold = null;
@@ -44,6 +45,7 @@
     if (qi >= 0) { h.slice(qi + 1).split('&').forEach(function (kv) { var i = kv.indexOf('='); if (kv.slice(0, i) === 'hl') { try { hl = decodeURIComponent(kv.slice(i + 1)); } catch (e) { hl = null; } } }); h = h.slice(0, qi); }
     var parts = h.replace(/^#\/?/, '').split('/').filter(Boolean).map(function (x) { try { return decodeURIComponent(x); } catch (e) { return x; } });
     if (parts[0] === 'highlights') return { page: 'highlights' };
+    if (parts[0] === 'how-to') return { page: 'howto' };
     var f = bySlug[parts[0]];
     return { file: f || G.files[0], id: f ? parts[1] || null : null, hl: f ? hl : null };
   }
@@ -54,9 +56,12 @@
     var r = parseRoute();
     closeDrawer(); hideTip();
     if (r.page) {
-      cur = null; headings = []; spyHold = null; confirmClear = false; renderHighlights(); buildTree(); window.scrollTo(0, 0);
-      document.title = 'Highlighted · Sec+ 701 Guide'; return;
+      cur = null; page = r.page; headings = []; spyHold = null; confirmClear = false;
+      if (page === 'highlights') renderHighlights(); else renderHowto();
+      buildTree(); window.scrollTo(0, 0);
+      document.title = (page === 'highlights' ? 'Highlighted' : 'How to use this guide') + ' · Sec+ 701 Guide'; return;
     }
+    page = null;
     if (r.file !== cur) { cur = r.file; renderFile(r.file); }
     var target = r.id && document.getElementById(r.id), hb = r.hl && Object.prototype.hasOwnProperty.call(blockByKey, r.hl) ? blockByKey[r.hl] : null;
     spyHold = null;
@@ -236,7 +241,7 @@
       h += '</li>';
     });
     elTree.innerHTML = h + '</ul>';
-    elHlink.classList.toggle('cur', !cur); if (!cur) elHlink.setAttribute('aria-current', 'page'); else elHlink.removeAttribute('aria-current');
+    [[elHlink, 'highlights'], [elHow, 'howto']].forEach(function (x) { var on = page === x[1]; x[0].classList.toggle('cur', on); if (on) x[0].setAttribute('aria-current', 'page'); else x[0].removeAttribute('aria-current'); });
     elHlink.querySelector('.n').textContent = '(' + groupedHL().total + ')';
     renderWeak();
   }
@@ -276,7 +281,7 @@
   function refreshReadiness2() { buildTree(); spy(); }
   window.addEventListener('focus', refreshReadiness);
   /* another tab changed the store: also redraw the Highlighted page if it is open (not on focus: that would drop keyboard focus) */
-  window.addEventListener('storage', function (e) { refreshReadiness(); if (!cur && (!e.key || e.key === HLK)) renderHighlights(); });
+  window.addEventListener('storage', function (e) { refreshReadiness(); if (page === 'highlights' && (!e.key || e.key === HLK)) renderHighlights(); });
 
   /* ---------- search UI ---------- */
   var results = [], sel = -1, qTimer = 0;
@@ -302,6 +307,7 @@
     }
     if (!results.length) h = '<p class="g-empty">No matches.</p>';
     elRes.innerHTML = h; elRes.hidden = false; elTree.hidden = true; elWeak.hidden = true; elQ.setAttribute('aria-expanded', 'true');
+    $('g-res-count').textContent = results.length ? results.length + (results.length === 1 ? ' result' : ' results') : 'No results'; elResTop.hidden = false;
     sel = results.length ? 0 : -1; markSel();
   }
   function markSel() {
@@ -311,7 +317,7 @@
     else elQ.removeAttribute('aria-activedescendant');
   }
   function clearResults() {
-    results = []; sel = -1; elRes.hidden = true; elRes.innerHTML = ''; elTree.hidden = false; elWeak.hidden = false; elQ.setAttribute('aria-expanded', 'false'); elQ.removeAttribute('aria-activedescendant');
+    results = []; sel = -1; elRes.hidden = true; elRes.innerHTML = ''; elResTop.hidden = true; elTree.hidden = false; elWeak.hidden = false; elQ.setAttribute('aria-expanded', 'false'); elQ.removeAttribute('aria-activedescendant');
   }
   function openResult(i) {
     var r = results[i]; if (!r) return;
@@ -319,7 +325,9 @@
     var same = location.hash === r.href;
     location.hash = r.href;
     if (same) onRoute();
-    elQ.value = ''; clearResults(); elQ.blur();
+    /* the query and its results stay in the sidebar so the reader can work through them; "Back to outline", Escape or an
+       empty box return to the chapter list */
+    sel = i; markSel(); elQ.blur();
   }
   elQ.addEventListener('input', function () { clearTimeout(qTimer); qTimer = setTimeout(runSearch, 80); });
   elQ.addEventListener('keydown', function (e) {
@@ -328,12 +336,14 @@
       e.preventDefault(); sel = (sel + (e.key === 'ArrowDown' ? 1 : -1) + results.length) % results.length; markSel();
     } else if (e.key === 'Enter') {
       clearTimeout(qTimer); if (!elRes.hidden || elQ.value.trim()) { if (elRes.hidden) runSearch(); e.preventDefault(); openResult(sel); }
-    } else if (e.key === 'Escape') { elQ.value = ''; clearResults(); }
+    } else if (e.key === 'Escape') { backToOutline(); }
   });
   elRes.addEventListener('click', function (e) {
     var a = e.target.closest('.g-res'); if (!a) return;
     e.preventDefault(); openResult(+a.getAttribute('data-i'));
   });
+  function backToOutline() { clearTimeout(qTimer); elQ.value = ''; clearResults(); }
+  $('g-res-back').addEventListener('click', function () { backToOutline(); elQ.focus(); });
 
 
   /* ---------- paragraph highlights ---------- */
@@ -462,6 +472,7 @@
     }
     elMain.innerHTML = h + '</section>';
   }
+  function renderHowto() { elMain.innerHTML = '<section class="g-howto">' + $('g-howto').innerHTML + '</section>'; }
   function exportMd() {
     var md = C.highlightsMarkdown(groupedHL()), blob = new Blob([md], { type: 'text/markdown' }), url = URL.createObjectURL(blob), a = document.createElement('a');
     a.href = url; a.download = 'secplus-highlights.md'; document.body.appendChild(a); a.click(); a.remove();
@@ -491,7 +502,7 @@
     if (e.key === 'Escape') {
       hideTip();
       if (elSide.classList.contains('open') && elRes.hidden) { closeDrawer(); elMenu.focus(); }
-      if (!elRes.hidden || elQ.value) { elQ.value = ''; clearResults(); }
+      if (!elRes.hidden || elQ.value) backToOutline();
       return;
     }
     if (typing(e.target)) return;

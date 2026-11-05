@@ -56,7 +56,7 @@ var UI = (function () {
       '<p>' + (c.finalBest ? 'Best: <strong>' + c.finalBest + '</strong> scaled' : 'Not attempted') + '</p></a>';
     h += '<a class="card link" href="#/drill"><h2>Missed Drill</h2><p class="muted">Practice only the questions you last got wrong.</p><p><strong>' + c.missed + '</strong> to review</p></a>';
     h += '</div><nav class="row footnav" aria-label="More"><a class="btn" href="#/history">History</a><a class="btn" href="#/settings">Settings</a>' +
-      '<a class="btn" href="' + guideBase() + '">Study guide</a><a class="btn" href="https://github.com/steeb-k/steeb-k.github.io/tree/main/sec-plus-test" rel="noopener">Source</a></nav>';
+      '<a class="btn" href="https://github.com/steeb-k/steeb-k.github.io/tree/main/sec-plus-test" target="_blank" rel="noopener">Source</a></nav>';
     return h;
   }
   function sessionLabel(s) {

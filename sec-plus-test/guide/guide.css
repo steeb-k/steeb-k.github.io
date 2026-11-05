@@ -68,8 +68,6 @@ mark.hit { background: var(--warn); color: var(--bg-0); }
 .g-weak p { color: var(--ink-3); margin: 0; font-size: 13px; }
 
 /* content typography */
-.g-banner { background: var(--warn-tint); border-left: 3px solid var(--warn); border-radius: var(--r-btn); padding: var(--s2) var(--s3); margin: 0 0 var(--s4); font-size: 13.5px; color: var(--ink); }
-.g-banner b { color: var(--warn); font-weight: 600; }
 .g-doc h1 { font-size: 28px; margin: 0 0 var(--s4); }
 .g-doc h2 { font-size: 21px; margin: var(--s7) 0 var(--s3); padding-top: var(--s4); border-top: 1px solid var(--line); }
 .g-doc h1 + h2 { margin-top: var(--s5); }

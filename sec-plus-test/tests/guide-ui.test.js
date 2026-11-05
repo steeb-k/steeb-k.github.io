@@ -74,6 +74,14 @@ const below = id => `(()=>{const h=document.getElementById('${id}'); return h.ge
       ok(same && pg.texts === 'Guide Practice GitHub' && pq.texts === 'Guide Practice GitHub' && pg.blank === 'GitHub' && pq.blank === 'GitHub' && pg.ext === 1 && pq.ext === 1 && pg.cur === 'Guide' && pq.cur === 'Practice',
         `header ${w}: pill and links at identical positions on guide and practice; links Guide/Practice/GitHub, only GitHub external`, JSON.stringify([pg, pq]));
     }
+    /* last section remembered: a deep link, then opening the guide with no hash lands on that section; an explicit #/ is the overview */
+    p = await B.page(G + '#/domain-4-security-operations/obj-4-8'); await sleep(200);
+    const stored = await p.eval(`localStorage.getItem('secplus.guide.last')`);
+    p = await B.page(G); const restored = await p.eval(`location.hash`); const restoredH1 = await p.eval(`document.querySelector('.g-doc h1').id`);
+    p = await B.page(G + '#/'); const explicit = await p.eval(`document.querySelector('.g-doc h1').id + ' ' + location.hash`);
+    ok(stored === '#/domain-4-security-operations/obj-4-8' && restored === stored && /^domain-4-security-operations/.test(restoredH1) && explicit === 'exam-overview #/',
+      'guide remembers the last section and restores it when opened without a hash; #/ still opens the overview', JSON.stringify({ stored, restored, restoredH1, explicit }));
+    ok(!await p.eval(`!!document.querySelector('.g-main .g-banner')`), 'no AI banner above chapters');
     p = await B.page(G);
     /* search: results persist after opening one (opened item selected); Back to outline, Escape, or an empty box restore the tree */
     const sr = await p.eval(`(async()=>{const q=document.getElementById('g-q'), res=document.getElementById('g-results'), top=document.getElementById('g-res-top'), tree=document.getElementById('g-tree');

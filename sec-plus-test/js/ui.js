@@ -38,7 +38,7 @@ var UI = (function () {
   }
 
   function home(c) {
-    var h = '<h1>Security+ SY0-701 practice</h1>';
+    var h = '<h1 class="sr">Security+ SY0-701 practice</h1>';
     if (c.session) {
       var s = c.session;
       h += '<section class="banner" role="status"><div><strong>Resume in-progress ' + esc(sessionLabel(s)) + '</strong><br><span class="muted">Question ' +

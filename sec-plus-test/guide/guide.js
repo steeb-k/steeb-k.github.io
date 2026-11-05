@@ -58,7 +58,7 @@
     if (r.page) {
       cur = null; page = r.page; headings = []; spyHold = null; confirmClear = false;
       if (page === 'highlights') renderHighlights(); else renderHowto();
-      buildTree(); window.scrollTo(0, 0);
+      buildTree(); window.scrollTo(0, 0); remember(page === 'highlights' ? '#/highlights' : '#/how-to');
       document.title = (page === 'highlights' ? 'Highlighted' : 'How to use this guide') + ' · Sec+ 701 Guide'; return;
     }
     page = null;
@@ -105,8 +105,7 @@
   /* ---------- content ---------- */
   function renderFile(f) {
     var i = fileIndex(f), prev = G.files[i - 1], next = G.files[i + 1], date = String(G.builtAt || '').slice(0, 10);
-    var h = '<div class="g-banner"><b>AI-generated, not yet vetted.</b> Cross-check anything surprising against the official CompTIA SY0-701 objectives and a published study guide.</div>' +
-      '<article class="g-doc" data-file="' + f.slug + '">' + f.html + '</article><nav class="g-pn" aria-label="Chapters">' +
+    var h = '<article class="g-doc" data-file="' + f.slug + '">' + f.html + '</article><nav class="g-pn" aria-label="Chapters">' +
       (prev ? '<a class="prev" href="#/' + prev.slug + '" rel="prev"><small>Previous</small>' + C.escHtml(prev.title) + '</a>' : '') +
       (next ? '<a class="next" href="#/' + next.slug + '" rel="next"><small>Next</small>' + C.escHtml(next.title) + '</a>' : '') + '</nav>' +
       '<p class="g-foot">Built from ' + REPO + ' @ ' + C.escHtml(G.sourceCommit) + ' · ' + C.escHtml(date) + ' · <a href="https://github.com/' + REPO + '/blob/main/' + f.src +
@@ -245,6 +244,8 @@
     elHlink.querySelector('.n').textContent = '(' + groupedHL().total + ')';
     renderWeak();
   }
+  var LASTK = 'secplus.guide.last', lastSaved = null;
+  function remember(hash) { if (hash === lastSaved) return; lastSaved = hash; try { localStorage.setItem(LASTK, hash); } catch (e) {} }
   function spy() {
     if (!headings.length) return;
     var line = (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--g-hdr')) || 57) + 24, act = null;
@@ -252,6 +253,7 @@
     var id = act ? act.id : null, h2id = null;
     if (spyHold) { if (Math.abs(window.scrollY - spyHold.y) < 2) { act = document.getElementById(spyHold.id) || act; id = act ? act.id : id; } else spyHold = null; }
     if (act) { var k = headings.indexOf(act); while (k >= 0 && headings[k].tagName !== 'H2') k--; h2id = k >= 0 ? headings[k].id : null; }
+    if (cur) remember('#/' + cur.slug + (id ? '/' + id : ''));
     Array.prototype.forEach.call(elTree.querySelectorAll('.nt-h2'), function (li) { li.classList.toggle('active', li.getAttribute('data-id') === h2id); });
     var prev = elTree.querySelector('a.cur'); if (prev && prev.getAttribute('data-id') === id) return;
     if (prev) prev.classList.remove('cur');
@@ -528,6 +530,10 @@
   }
   function measureHeader() { var h = document.querySelector('.site-header'); if (h) document.documentElement.style.setProperty('--g-hdr', h.offsetHeight + 'px'); }
   measureHeader(); loadReadiness(); loadHL();
+  if (!location.hash || location.hash === '#') {
+    var last = null; try { last = localStorage.getItem(LASTK); } catch (e) {}
+    if (last && /^#\/[\w-]+(\/[\w-]+)?$/.test(last)) history.replaceState(null, '', last);  /* no hashchange event: onRoute below renders it */
+  }
   window.addEventListener('hashchange', onRoute);
   onRoute();
   document.documentElement.dataset.ready = '1';

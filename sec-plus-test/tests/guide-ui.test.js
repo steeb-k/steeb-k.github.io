@@ -51,6 +51,12 @@ const below = id => `(()=>{const h=document.getElementById('${id}'); return h.ge
     const d = await p.eval(below('obj-4-8'));
     ok(d >= 8 && d <= 24, 'deep link: heading 8-24px below the header', d);
     ok(await p.eval(`!!document.querySelector('#g-tree a.cur[data-id="obj-4-8"]')`), 'deep link: sidebar highlights the heading');
+    /* a section link inside the same chapter glides (smooth scroll) and still lands 8-24px below the header; the sidebar follows */
+    const y0 = await p.eval(`scrollY`); await p.eval(`location.hash='#/domain-4-security-operations/obj-4-1'`); await sleep(60);
+    const mid = await p.eval(`scrollY`); await sleep(1500);
+    const sm = await p.eval(`({d:${below('obj-4-1')}, y:scrollY, cur:!!document.querySelector('#g-tree a.cur[data-id="obj-4-1"]')})`);
+    ok(sm.d >= 8 && sm.d <= 24 && sm.cur && y0 !== sm.y, 'same-chapter section link: lands 8-24px below the header, sidebar marks it (smooth scroll)', JSON.stringify({ y0, mid, sm }));
+    ok(mid !== y0 && mid !== sm.y, 'same-chapter section link: the window is still in flight 60ms after the click (smooth, not a snap)', JSON.stringify({ y0, mid, end: sm.y }));
     /* sidebar tree: H2 list indented with its rule, H3s indented further than H2 text */
     const tree = await p.eval(`(()=>{const f=document.querySelector('.nt-file.open > a').getBoundingClientRect().left, h2=document.querySelector('.nt-h2s').getBoundingClientRect().left,
       h2a=document.querySelector('.nt-h2.active > a').getBoundingClientRect().left, h3=document.querySelector('.nt-h2.active .nt-h3s a').getBoundingClientRect().left; return {f,h2,h2a,h3}})()`);
@@ -74,6 +80,40 @@ const below = id => `(()=>{const h=document.getElementById('${id}'); return h.ge
       ok(same && pg.texts === 'Guide Practice GitHub' && pq.texts === 'Guide Practice GitHub' && pg.blank === 'GitHub' && pq.blank === 'GitHub' && pg.ext === 1 && pq.ext === 1 && pg.cur === 'Guide' && pq.cur === 'Practice',
         `header ${w}: pill and links at identical positions on guide and practice; links Guide/Practice/GitHub, only GitHub external`, JSON.stringify([pg, pq]));
     }
+    /* brand pill: "Security+ | SY0-701" whenever it fits, else "Sec+ | SY0-701", else "Sec+ | 701" (each step only when the one
+       before would run into the nav or past the header's edge). On the guide the pill is the guide's front page; on the practice
+       page it is the practice home. */
+    const PILL = `(()=>{const h=document.querySelector('.site-header'), w=h.querySelector('.hwrap'), b=h.querySelector('.brand'), nav=h.querySelector('nav');
+      const inside=()=>{const wr=w.getBoundingClientRect(), pr=parseFloat(getComputedStyle(w).paddingRight)||0, n=nav.getBoundingClientRect(); return n.right<=wr.right-pr+0.5 && n.left>=b.getBoundingClientRect().right+8};
+      const state=h.getAttribute('data-brand'), shown=()=>[...h.querySelectorAll('.brand-l > span, .brand-r > span')].filter(e=>getComputedStyle(e).display!=='none').map(e=>e.textContent).join('|');
+      const label=shown(), ok=inside(), lines=Math.round(h.querySelector('.brand-pill').getBoundingClientRect().height/20);
+      h.removeAttribute('data-brand'); const fullFits=inside(); h.setAttribute('data-brand','short'); const shortFits=inside(); if(state) h.setAttribute('data-brand', state); else h.removeAttribute('data-brand');
+      const want=fullFits?'Security+|SY0-701':shortFits?'Sec+|SY0-701':'Sec+|701';
+      return {label, want, inside:ok, lines, href:b.getAttribute('href'), aria:b.getAttribute('aria-label'), w:innerWidth}})()`;
+    const pills = [];
+    for (const [w, h, mobile] of [[1280, 800, false], [1000, 800, false], [390, 844, true], [360, 640, true]]) pills.push(await (await B.page(G, { w, h, mobile })).eval(PILL), await (await B.page(ROOT_URL + '/index.html', { w, h, mobile })).eval(PILL));
+    ok(pills.every(x => x.label === x.want && x.inside && x.lines === 1 && x.aria === 'Security+ SY0-701 home'), 'pill: steps down only as far as needed, one line, nav inside the header (guide and practice, 1280/1000/390/360)', JSON.stringify(pills));
+    ok(pills[0].label === 'Security+|SY0-701' && pills[pills.length - 1].label !== 'Security+|SY0-701', 'pill: full wording on desktop, shortened on a 360px phone', JSON.stringify(pills.map(x => [x.w, x.label])));
+    p = await B.page(G + '#/domain-4-security-operations/obj-4-8');
+    await p.eval(`document.querySelector('.site-header .brand').click()`); await sleep(300);
+    ok(pills[0].href === '#/' && await p.eval(`location.hash==='#/' && document.querySelector('.g-doc h1').id==='exam-overview'`), 'pill on the guide: returns to the guide front page (Exam Overview)');
+    ok(pills[1].href === '#/', 'pill on the practice page: still the practice home');
+    /* practice: Up/Down on an ordering PBQ animates the two rows into their new places and tints the moved row briefly */
+    p = await B.page(ROOT_URL + '/index.html');
+    const sw = await p.eval(`(async()=>{const wait=ms=>new Promise(r=>setTimeout(r,ms)); let ol=null; localStorage.clear();
+      /* a domain-4 module draws 2 of its 6 PBQs at random (3 are ordering): start modules until one shows up */
+      for (let tries=0; tries<10 && !ol; tries++) { location.hash='#/module/4'; await wait(150); document.querySelector('[data-act=start-module]').click(); await wait(250);
+        for (let i=0; i<12 && !(ol=document.querySelector('.pbq-order')); i++) { const b=document.querySelector('[data-act=next]'); if(!b) break; b.click(); await wait(60); } }
+      if (!ol) return {ol:false}; const t=li=>li.querySelector('.pbq-item').textContent, before=[t(ol.children[0]), t(ol.children[1])];
+      document.getElementById('po0d').click(); ol=document.querySelector('.pbq-order');
+      const slides=li=>li?li.getAnimations().filter(a=>!(a instanceof CSSTransition)).length:0; /* the tint's border-color transition is not the slide */
+      const during={anim:[slides(ol.children[0]), slides(ol.children[1]), slides(ol.children[2])], tint:ol.children[1].classList.contains('swapped'),
+        dir:getComputedStyle(ol.children[1]).transform, focus:document.activeElement.id, after:[t(ol.children[0]), t(ol.children[1])]};
+      await wait(700); const settled={anim:slides(ol.children[0])+slides(ol.children[1]), tint:ol.children[1].classList.contains('swapped')};
+      localStorage.clear(); return {ol:true, before, during, settled}})()`);
+    ok(sw.ol && sw.during.anim.join() === '1,1,0' && sw.during.tint && /matrix\(1, 0, 0, 1, 0, -?[1-9]/.test(sw.during.dir) && sw.during.focus === 'po1d'
+      && sw.during.after[0] === sw.before[1] && sw.during.after[1] === sw.before[0] && sw.settled.anim === 0 && !sw.settled.tint,
+      'ordering PBQ: Down swaps the rows, both slide from their old places (moved row tinted), focus follows, then everything settles', JSON.stringify(sw));
     /* last section remembered: a deep link, then opening the guide with no hash lands on that section; an explicit #/ is the overview */
     p = await B.page(G + '#/domain-4-security-operations/obj-4-8'); await sleep(200);
     const stored = await p.eval(`localStorage.getItem('secplus.guide.last')`);
@@ -96,6 +136,14 @@ const below = id => `(()=>{const h=document.getElementById('${id}'); return h.ge
       'search: results and query persist after opening a result, opened item selected', JSON.stringify(sr.after));
     ok(sr.back.q === '' && !sr.back.res && !sr.back.top && sr.back.tree && sr.esc.q === '' && !sr.esc.res && sr.esc.tree && !sr.empty.res && sr.empty.tree,
       'search: Back to outline, Escape and an empty box restore the outline', JSON.stringify([sr.back, sr.esc, sr.empty]));
+    /* search: the results list keeps its scroll position when a result far down is opened (the hidden outline must not drive the
+       sidebar's auto-scroll); Back to outline then reveals the current entry */
+    const ss = await p.eval(`(async()=>{const wait=ms=>new Promise(r=>setTimeout(r,ms)); const q=document.getElementById('g-q'), s=document.getElementById('g-side'); q.value='security'; q.dispatchEvent(new Event('input')); await wait(200);
+      const items=document.querySelectorAll('.g-res'), inToc=a=>{const p=a.getAttribute('href').replace(/^#\\//,'').split('/'), f=SEC_GUIDE.files.find(f=>f.slug===p[0]); return f && f.toc.some(t=>t.id===p[1])};
+      const a=[...items].reverse().find(inToc); a.scrollIntoView({block:'center'}); await wait(50); const before=s.scrollTop; a.click(); await wait(400); const after=s.scrollTop;
+      document.getElementById('g-res-back').click(); await wait(100); const c=document.querySelector('#g-tree a.cur'), r=c&&c.getBoundingClientRect(), sb=s.getBoundingClientRect(), hb=document.querySelector('.site-header').getBoundingClientRect().bottom;
+      return {n:items.length, before, after, hash:location.hash, curVisible:!!r && r.top>=hb && r.bottom<=sb.bottom}})()`);
+    ok(ss.n > 20 && ss.before > 100 && Math.abs(ss.after - ss.before) <= 1 && ss.curVisible, 'search: opening a result keeps the results list where it was; Back to outline shows the current entry', JSON.stringify(ss));
     /* How to use this guide: own route, rendered from the template, link at the top of the sidebar marked current */
     p = await B.page(G + '#/how-to');
     const ht = await p.eval(`(()=>{const h1=document.querySelector('.g-main .g-howto h1'); return {h1:h1&&h1.textContent, title:document.title, cur:document.getElementById('g-howlink').classList.contains('cur'),

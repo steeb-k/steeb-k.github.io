@@ -125,6 +125,18 @@
     }
   }
   function rerender() { route(); }
+  /* Up/Down on an ordering PBQ: the list is re-rendered in place, then the two rows that changed places slide from where
+     they were to where they are (measure before, paint, play the difference), and the moved row gets a short tint. */
+  function animateSwap(ol, before, a, b) {
+    if (!ol || !ol.children[a] || !ol.children[b]) return;
+    var moved = ol.children[b];
+    moved.classList.add('swapped'); setTimeout(function () { moved.classList.remove('swapped'); }, 450);
+    if (!moved.animate || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
+    [[b, a], [a, b]].forEach(function (x) {  /* the row now at x[0] sat at x[1] before the swap */
+      var li = ol.children[x[0]], dy = before[x[1]] - li.getBoundingClientRect().top;
+      if (Math.abs(dy) >= 1) li.animate([{ transform: 'translateY(' + dy + 'px)' }, { transform: 'none' }], { duration: 240, easing: 'cubic-bezier(.2, .7, .2, 1)' });
+    });
+  }
 
   /* ---------- contexts ---------- */
   function homeCtx() {
@@ -244,7 +256,8 @@
   }
   function setIdx(i) {
     var s = S.session; if (i < 0 || i >= s.qids.length) return;
-    s.idx = i; S.notice = null; saveSession(); rerender(); window.scrollTo(0, 0);
+    s.idx = i; S.notice = null; saveSession(); rerender();
+    window.scrollTo({ top: 0, behavior: window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
   }
   function toggleFlag() { var s = S.session, id = curQ().id; if (s.flags[id]) delete s.flags[id]; else s.flags[id] = true; saveSession(); rerender(); }
   function check() {
@@ -273,9 +286,11 @@
       var q = curQ(), na = PBQ.handle(q, S.session.answers[q.id], pb, S.session.id);
       if (na) {
         S.session.answers[q.id] = na;
-        var np = +pb.getAttribute('data-pos') + (+pb.getAttribute('data-dir'));
+        var p0 = +pb.getAttribute('data-pos'), np = p0 + (+pb.getAttribute('data-dir'));
         S.focusId = 'po' + np + (pb.getAttribute('data-dir') === '-1' ? 'u' : 'd');
+        var ol = pb.closest('.pbq-order'), before = ol ? Array.prototype.map.call(ol.children, function (li) { return li.getBoundingClientRect().top; }) : null;
         saveSession(); rerender();
+        if (before) animateSwap(appEl.querySelector('.pbq-order'), before, p0, np);
       }
       return;
     }

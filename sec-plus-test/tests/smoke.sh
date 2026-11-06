@@ -19,6 +19,8 @@ else
   grep -q '<h1 id="exam-overview">Exam Overview' "$TMP/dom.html" || { echo "FAIL: guide did not render the Exam Overview chapter"; fail=1; }
   grep -q 'class="tip"' "$TMP/dom.html" || { echo "FAIL: no acronym tooltips rendered"; fail=1; }
 fi
+grep -q 'class="brand-full">Security+<' "$TMP/dom.html" || { echo "FAIL: brand pill markup (Security+/Sec+) missing"; fail=1; }
+grep -q 'data-brand="short"' "$TMP/dom.html" && { echo "FAIL: brand pill shortened to Sec+ in a wide window"; fail=1; }
 STATUS="$(grep -o 'id="boot-status"[^>]*>[^<]*' "$TMP/dom.html" | sed 's/.*>//')"
 echo "boot-status: ${STATUS:-<missing>}"
 case "$STATUS" in *"errors=0"*) ;; *) echo "FAIL: JS errors reported or boot-status missing"; fail=1 ;; esac

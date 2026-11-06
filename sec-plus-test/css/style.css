@@ -91,6 +91,11 @@ h1:focus { outline: none; }
 .brand-pill { display: inline-flex; border-radius: 999px; box-shadow: 0 0 0 1.5px var(--ink); background: var(--ink); margin: 1.5px; overflow: hidden; font-weight: 600; font-size: 14px; line-height: 1; letter-spacing: .01em; }
 .brand-l { background: var(--ink); color: var(--bg-0); padding: 5px 10px 5px 12px; }
 .brand-r { background: var(--bg-0); color: var(--ink); padding: 5px 12px 5px 10px; font-family: var(--font-mono); }
+/* js/header.js steps the pill down only as far as needed to fit beside the nav: "Security+ | SY0-701" (default),
+   data-brand="short" -> "Sec+ | SY0-701", data-brand="tiny" -> "Sec+ | 701" */
+.brand-pill, .site-header nav { white-space: nowrap; }
+.brand-abbr, .site-header[data-brand="short"] .brand-l .brand-full, .site-header[data-brand="tiny"] .brand-full { display: none; }
+.site-header[data-brand="short"] .brand-l .brand-abbr, .site-header[data-brand="tiny"] .brand-abbr { display: inline; }
 @media (forced-colors: active) { .brand-pill { box-shadow: none; border: 1px solid CanvasText; } }
 main { max-width: var(--col-w); margin: 0 auto; padding: var(--s5) 24px var(--s7); }
 
@@ -216,6 +221,7 @@ label[for=impfile] { font-size: 13.5px; color: var(--ink-2); }
 .pbq-order li { display: flex; gap: 10px; align-items: center; justify-content: space-between; border: 1px solid var(--line); border-radius: var(--r-btn); padding: 8px 10px 8px 46px; background: var(--bg-2); min-height: 54px; }
 .pbq-order li::before { left: 10px; top: 50%; transform: translateY(-50%); }
 .pbq-item { font-weight: 500; }
+.pbq-order li.swapped { border-color: var(--accent); z-index: 1; }
 /* Config PBQ: stacked rows, fields wrap so every dropdown is visible at any width */
 .pbq-rows { display: grid; gap: 10px; }
 .pbq-row { border: 1px solid var(--line); border-radius: var(--r-btn); background: var(--bg-2); padding: 10px 12px 12px; }
@@ -307,7 +313,7 @@ td.barcell { min-width: 90px; width: 22%; }
   .barcell { display: none; }
   td.nowrap { white-space: normal; min-width: 7.5em; }
 }
-@media (prefers-reduced-motion: no-preference) { .opt, .btn, .card, .cell { transition: border-color .12s, background-color .12s; } }
+@media (prefers-reduced-motion: no-preference) { .opt, .btn, .card, .cell { transition: border-color .12s, background-color .12s; } .pbq-order li { transition: border-color .3s; } }
 @media print {
   .site-header, .actions, .btn, .filters { display: none; }
   /* paper is white and browsers drop backgrounds by default: always print with the light palette, whatever the screen theme */

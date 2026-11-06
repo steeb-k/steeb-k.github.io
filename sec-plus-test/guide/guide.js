@@ -52,6 +52,17 @@
   function fileIndex(f) { return G.files.indexOf(f); }
   function go(slug, id) { location.hash = '#/' + slug + (id ? '/' + id : ''); }
 
+  /* Programmatic scrolls glide (smooth) once the guide is up; the first render, a change of chapter or page (new content
+     under the reader) and reduced-motion settings scroll instantly. */
+  var booted = false;
+  function motion(newContent) {
+    return booted && !newContent && !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) ? 'smooth' : 'instant';
+  }
+  /* where the window will rest after scrolling `el` to the top (scroll-margin-top keeps it below the header) */
+  function restY(el) {
+    var top = el.getBoundingClientRect().top + window.scrollY - (parseFloat(getComputedStyle(el).scrollMarginTop) || 0);
+    return Math.max(0, Math.min(top, document.documentElement.scrollHeight - window.innerHeight));
+  }
   function onRoute() {
     var r = parseRoute();
     closeDrawer(); hideTip();
@@ -61,22 +72,24 @@
       buildTree(); window.scrollTo(0, 0); remember(page === 'highlights' ? '#/highlights' : '#/how-to');
       document.title = (page === 'highlights' ? 'Highlighted' : 'How to use this guide') + ' · Sec+ 701 Guide'; return;
     }
+    var how = motion(page !== null || r.file !== cur);
     page = null;
     if (r.file !== cur) { cur = r.file; renderFile(r.file); }
     var target = r.id && document.getElementById(r.id), hb = r.hl && Object.prototype.hasOwnProperty.call(blockByKey, r.hl) ? blockByKey[r.hl] : null;
     spyHold = null;
     if (target && elMain.contains(target)) {
-      (hb ? hb.el : target).scrollIntoView({ block: 'start' });
+      var el = hb ? hb.el : target;
+      el.scrollIntoView({ block: 'start', behavior: how });
       /* near the end of a chapter the block cannot reach the top, so scrollspy would pick an earlier heading: keep the
-         section marked until the reader scrolls */
-      if (hb) { flashHL(hb.el); markCur(r.id); spyHold = { id: r.id, y: window.scrollY }; }
+         section marked while the window glides there and until the reader scrolls away */
+      if (hb) { flashHL(hb.el); markCur(r.id); spyHold = { id: r.id, from: window.scrollY, to: restY(el) }; }
       if (target.tagName === 'TR') flash(target);
       document.title = headingText(target) + ' · Sec+ 701 Guide';
     } else {
-      window.scrollTo(0, 0);
+      window.scrollTo({ top: 0, behavior: how });
       document.title = (r.file === G.files[0] ? 'Exam Overview' : r.file.title) + ' · Sec+ 701 Guide';
     }
-    if (pendingHit) { var t = pendingHit; pendingHit = null; highlightHit(target, t); }
+    if (pendingHit) { var t = pendingHit; pendingHit = null; highlightHit(target, t, how); }
     spy();
   }
   function headingText(el) {
@@ -87,7 +100,7 @@
   function flashHL(el) { clearTimeout(el._hlT); el.classList.add('hl-flash'); el._hlT = setTimeout(function () { el.classList.remove('hl-flash'); }, 1500); }
   function markCur(id) { var prev = elTree.querySelector('a.cur'); if (prev) prev.classList.remove('cur'); var a = elTree.querySelector('.nt-h2s a[data-id="' + id + '"]'); if (a) a.classList.add('cur'); }
   function flash(el) { el.classList.add('flash'); setTimeout(function () { el.classList.remove('flash'); }, 2200); }
-  function highlightHit(startEl, token) {
+  function highlightHit(startEl, token, how) {
     if (!token) return;
     var root = elMain.querySelector('.g-doc'), w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT), n, started = !startEl, low = token.toLowerCase();
     while ((n = w.nextNode())) {
@@ -96,7 +109,7 @@
       if (i < 0 || n.parentNode.closest('.hanchor')) continue;
       var rng = document.createRange(); rng.setStart(n, i); rng.setEnd(n, i + token.length);
       var m = document.createElement('mark'); m.className = 'hit'; rng.surroundContents(m);
-      m.scrollIntoView({ block: 'center' });
+      m.scrollIntoView({ block: 'center', behavior: how || 'instant' });
       setTimeout(function () { var p = m.parentNode; if (p) { p.replaceChild(document.createTextNode(m.textContent), m); p.normalize(); } }, 3500);
       return;
     }
@@ -251,18 +264,25 @@
     var line = (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--g-hdr')) || 57) + 24, act = null;
     for (var i = 0; i < headings.length; i++) { if (headings[i].getBoundingClientRect().top <= line) act = headings[i]; else break; }
     var id = act ? act.id : null, h2id = null;
-    if (spyHold) { if (Math.abs(window.scrollY - spyHold.y) < 2) { act = document.getElementById(spyHold.id) || act; id = act ? act.id : id; } else spyHold = null; }
+    if (spyHold) {
+      var y = window.scrollY;
+      if (Math.abs(y - spyHold.to) < 2) spyHold.from = spyHold.to;  /* arrived: from here on any scroll releases the hold */
+      if (y >= Math.min(spyHold.from, spyHold.to) - 2 && y <= Math.max(spyHold.from, spyHold.to) + 2) { act = document.getElementById(spyHold.id) || act; id = act ? act.id : id; } else spyHold = null;
+    }
     if (act) { var k = headings.indexOf(act); while (k >= 0 && headings[k].tagName !== 'H2') k--; h2id = k >= 0 ? headings[k].id : null; }
     if (cur) remember('#/' + cur.slug + (id ? '/' + id : ''));
     Array.prototype.forEach.call(elTree.querySelectorAll('.nt-h2'), function (li) { li.classList.toggle('active', li.getAttribute('data-id') === h2id); });
     var prev = elTree.querySelector('a.cur'); if (prev && prev.getAttribute('data-id') === id) return;
     if (prev) prev.classList.remove('cur');
     var a = id && elTree.querySelector('.nt-h2s a[data-id="' + id + '"]');
-    if (a) {
-      a.classList.add('cur');
-      var sb = sideView(), ab = a.getBoundingClientRect();
-      if (ab.top < sb.top + 60 || ab.bottom > sb.bottom - 20) elSide.scrollTop += ab.top - sb.top - sb.height / 3;
-    }
+    if (a) { a.classList.add('cur'); revealCur(); }
+  }
+  /* Scroll the sidebar so the current outline entry is in view. Not while search results cover the outline: the hidden
+     entry has no box, and the arithmetic would throw the results list back to the top. */
+  function revealCur() {
+    var a = elTree.querySelector('a.cur'); if (!a || elTree.hidden) return;
+    var sb = sideView(), ab = a.getBoundingClientRect();
+    if (ab.top < sb.top + 60 || ab.bottom > sb.bottom - 20) elSide.scrollTo({ top: elSide.scrollTop + ab.top - sb.top - sb.height / 3, behavior: motion() });
   }
   function renderWeak() {
     var weak = C.weakSpots(ready, 5), h = '<h2>Weak spots</h2>';
@@ -315,11 +335,12 @@
   function markSel() {
     Array.prototype.forEach.call(elRes.querySelectorAll('.g-res'), function (a) { a.setAttribute('aria-selected', String(+a.getAttribute('data-i') === sel)); });
     var a = sel >= 0 && $('g-r' + sel);
-    if (a) { elQ.setAttribute('aria-activedescendant', a.id); var sb = sideView(), ab = a.getBoundingClientRect(); if (ab.top < sb.top || ab.bottom > sb.bottom) a.scrollIntoView({ block: 'nearest' }); }
+    if (a) { elQ.setAttribute('aria-activedescendant', a.id); var sb = sideView(), ab = a.getBoundingClientRect(); if (ab.top < sb.top || ab.bottom > sb.bottom) a.scrollIntoView({ block: 'nearest', behavior: motion() }); }
     else elQ.removeAttribute('aria-activedescendant');
   }
   function clearResults() {
     results = []; sel = -1; elRes.hidden = true; elRes.innerHTML = ''; elResTop.hidden = true; elTree.hidden = false; elWeak.hidden = false; elQ.setAttribute('aria-expanded', 'false'); elQ.removeAttribute('aria-activedescendant');
+    revealCur();
   }
   function openResult(i) {
     var r = results[i]; if (!r) return;
@@ -536,6 +557,7 @@
   }
   window.addEventListener('hashchange', onRoute);
   onRoute();
+  booted = true;
   document.documentElement.dataset.ready = '1';
   setBoot();
 })();

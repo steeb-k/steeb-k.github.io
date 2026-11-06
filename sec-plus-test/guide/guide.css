@@ -151,7 +151,22 @@ mark.hit { background: var(--warn); color: var(--bg-0); }
   .g-menu { background: var(--hdr-bg); -webkit-backdrop-filter: blur(14px) saturate(1.15); backdrop-filter: blur(14px) saturate(1.15); }
 }
 @media (prefers-reduced-motion: reduce) { .g-side { transition: none !important; } }
-@media print { .g-side, .g-backdrop, .tooltip, .g-pn { display: none; } .g-layout { display: block; } }
+@media print {
+  :root, :root[data-theme] { --hl: #9c7a1f; --hl-ink: #6b5108; --hl-tint: rgba(156, 122, 31, .12); }
+  .g-side, .g-backdrop, .tooltip, .g-pn, .g-menu { display: none; }
+  .g-layout { display: block; }
+  .g-main { max-width: none; width: auto; padding: 0; margin: 0; }
+  /* tables: on paper there is no scrolling, so let headers wrap and the table shrink to the page instead of clipping the
+     right edge (nowrap headers made the table wider than the sheet at 100%) */
+  .table-wrap { overflow: visible; border-radius: 0; break-inside: auto; }
+  table { width: 100%; max-width: 100%; }
+  thead th { white-space: normal; }
+  th, td { overflow-wrap: anywhere; }
+  tr { break-inside: avoid; }
+  .g-doc pre { white-space: pre-wrap; overflow: visible; }
+  .g-doc h1, .g-doc h2, .g-doc h3 { break-after: avoid; }
+  .tip { text-decoration: none; }
+}
 
 /* paragraph highlights */
 .hl-block { position: relative; }

@@ -308,7 +308,20 @@ td.barcell { min-width: 90px; width: 22%; }
   td.nowrap { white-space: normal; min-width: 7.5em; }
 }
 @media (prefers-reduced-motion: no-preference) { .opt, .btn, .card, .cell { transition: border-color .12s, background-color .12s; } }
-@media print { .site-header, .actions, .btn, .filters { display: none; } }
+@media print {
+  .site-header, .actions, .btn, .filters { display: none; }
+  /* paper is white and browsers drop backgrounds by default: always print with the light palette, whatever the screen theme */
+  :root, :root[data-theme] {
+    --hdr-bg: #fbfbfb; --bg-0: #ffffff; --bg-1: #ffffff; --bg-2: #f1f1f1; --bg-3: #e6e6e6;
+    --line: #d4d4d4; --line-strong: #b4b4b4;
+    --ink: #111111; --ink-2: #444444; --ink-3: #666666;
+    --accent: #1f4f75; --accent-hi: #1a4262; --accent-ink: #ffffff; --accent-tint: rgba(31, 79, 117, .08);
+    --ok: #2b7a45; --ok-tint: rgba(43, 122, 69, .08); --bad: #a8404b; --bad-tint: rgba(168, 64, 75, .08);
+    --warn: #7d5f0a; --warn-tint: rgba(125, 95, 10, .10); --info: #1f4f75; --info-tint: rgba(31, 79, 117, .08);
+    --shadow: none; color-scheme: light;
+  }
+  html, body { background: #fff; color: var(--ink); }
+}
 
 /* acronym glossary under explanations */
 .acronyms { margin: var(--s3) 0 0; font-size: 13px; color: var(--ink-2); line-height: 1.5; }

@@ -80,6 +80,8 @@
     if (target && elMain.contains(target)) {
       var el = hb ? hb.el : target;
       el.scrollIntoView({ block: 'start', behavior: how });
+      /* a deep link on first load: the web fonts can land after this scroll and rewrap the text above, so settle once more */
+      if (!booted && document.fonts && document.fonts.ready) { var y0 = window.scrollY; document.fonts.ready.then(function () { if (Math.abs(window.scrollY - y0) < 2) el.scrollIntoView({ block: 'start', behavior: 'instant' }); }, function () {}); }
       /* near the end of a chapter the block cannot reach the top, so scrollspy would pick an earlier heading: keep the
          section marked while the window glides there and until the reader scrolls away */
       if (hb) { flashHL(hb.el); markCur(r.id); spyHold = { id: r.id, from: window.scrollY, to: restY(el) }; }
@@ -223,7 +225,9 @@
     var t = e.target;
     if (e.key === 'Enter' && t.classList && t.classList.contains('tip') && acrAnchor(t.getAttribute('data-acr'))) go('acronyms', acrAnchor(t.getAttribute('data-acr')));
   });
-  window.addEventListener('scroll', function () {
+  window.addEventListener('scroll', function (e) {
+    /* the sidebar gliding to the current entry is not the reader scrolling: it must not dismiss a tooltip */
+    if (e.target !== document && e.target.nodeType === 1 && elSide.contains(e.target)) return;
     if (tipFor && document.activeElement === tipFor) placeTip(); else hideTip();
     if (!spyRaf) spyRaf = requestAnimationFrame(function () { spyRaf = 0; spy(); });
   }, { passive: true, capture: true });

@@ -10,7 +10,7 @@
     try { return Engine.acronymsIn(q, g); } catch (e) { return []; }
   }
   var appEl = document.getElementById('app');
-  var S = { session: null, qstats: {}, settings: {}, showReview: false, filter: 'all', filterFor: null, msg: '', routeKey: '', focusId: null, notice: null };
+  var S = { session: null, qstats: {}, settings: {}, filter: 'all', filterFor: null, msg: '', routeKey: '', focusId: null, notice: null };
 
   /* ---------- boot status / error counter ---------- */
   function setBoot() {
@@ -163,7 +163,7 @@
     return { session: s, q: q, idx: s.idx, practice: practice, answer: ans, locked: practice && !!s.checked[q.id],
       order: (q.type === 'single' || q.type === 'multi') ? Engine.optionOrder(q, s.id) : null,
       flagged: !!s.flags[q.id], hasAnswer: Engine.isAnswered(q, ans) || q.type === 'order', result: Engine.scoreQuestion(q, ans, s.id),
-      acro: (practice && s.checked[q.id]) ? acroFor(q) : [], cells: cells, showReview: S.showReview, timerText: timerText(), notice: S.notice && S.notice.id === q.id ? S.notice.text : '' };
+      acro: (practice && s.checked[q.id]) ? acroFor(q) : [], cells: cells, timerText: timerText(), notice: S.notice && S.notice.id === q.id ? S.notice.text : '' };
   }
   function quizHtml() { return UI.quiz(quizCtx()); }
 
@@ -204,7 +204,6 @@
     if (!qids.length) { alert('No questions available for that selection.'); return; }
     S.session = { id: id, type: type === 'retry' ? 'drill' : type, domain: o.domain || null, mode: o.mode, startedAt: now(), qids: qids,
       answers: {}, flags: {}, checked: {}, idx: 0, timer: Engine.Timer.create(type === 'final' ? EXAM.minutes * 60000 : null) };
-    S.showReview = false;
     Engine.Timer.start(S.session.timer, now());
     saveSession();
     go('#/quiz');
@@ -222,7 +221,6 @@
     Store.setQstats(S.qstats);
     Store.addAttempt(attempt);
     S.session = null; Store.setSession(null);
-    S.showReview = false;
     go('#/results/' + attempt.id);
   }
 
@@ -310,7 +308,6 @@
       case 'goto': setIdx(+el.getAttribute('data-i')); break;
       case 'flag': toggleFlag(); break;
       case 'check': check(); break;
-      case 'review': S.showReview = !S.showReview; rerender(); break;
       case 'submit': submitClick(); break;
       case 'pause': togglePause(); break;
       case 'filter': S.filter = el.getAttribute('data-f'); rerender(); break;
@@ -389,7 +386,7 @@
   }
 
   /* ---------- init ---------- */
-  window.addEventListener('hashchange', function () { S.showReview = false; route(); });
+  window.addEventListener('hashchange', route);
   function init() {
     Store.migrate();
     S.qstats = Store.getQstats(); S.settings = Store.getSettings(); S.session = Store.getSession();

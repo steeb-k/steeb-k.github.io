@@ -150,11 +150,11 @@ var UI = (function () {
     h += '</article><div class="row actions">';
     h += '<button class="btn" data-act="prev"' + (c.idx === 0 ? ' disabled' : '') + '>Prev</button>';
     h += '<button class="btn' + (c.flagged ? ' on' : '') + '" data-act="flag" aria-pressed="' + (c.flagged ? 'true' : 'false') + '">' + (c.flagged ? 'Flagged' : 'Flag') + '</button>';
-    h += '<button class="btn" data-act="review" aria-expanded="' + (c.showReview ? 'true' : 'false') + '">Review</button><span class="grow"></span>';
+    h += '<span class="grow"></span>';
     if (c.practice && !c.locked) h += '<button class="btn primary" data-act="check"' + (c.hasAnswer ? '' : ' disabled') + '>Check</button>';
     if (c.idx < s.qids.length - 1) h += '<button class="btn primary" id="nextbtn" data-act="next">Next</button>';
     h += '<button class="btn danger" data-act="submit">Submit</button></div>';
-    if (c.showReview) h += '<section class="panel"><h2>Review</h2>' + grid(c) + '</section>';
+    h += '<section class="panel"><h2>Review</h2>' + grid(c) + '</section>';
     h += '<p class="muted kbd">Keys: 1-6 select, F flag, &larr; &rarr; navigate, Enter next.</p>';
     return h;
   }

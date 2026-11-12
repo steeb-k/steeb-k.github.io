@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/svg+xml" href="az-900/icons/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="az-900/icons/favicon-32.png">
+<link rel="icon" href="az-900/icons/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" sizes="180x180" href="az-900/icons/apple-touch-icon.png">
+<title>Azure Exams</title>
+<meta name="description" content="Study guides and practice exams for Microsoft Azure certifications.">
+<!-- Same theme choice as the AZ-900 practice site (stored in its settings); dark unless it says otherwise. -->
+<script>(function () { var t = 'dark'; try { var s = JSON.parse(localStorage.getItem('az900.settings') || '{}'); if (s.theme) t = s.theme; } catch (e) {} if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); })();</script>
+<link rel="stylesheet" href="../fonts/ibm-plex/plex.css">
+<link rel="stylesheet" href="az-900/css/style.css">
+<style>
+.hub-lede { color: var(--ink-2); max-width: 60ch; margin-bottom: var(--s5); }
+.hub-card .code { font-family: var(--font-mono); font-size: 13.5px; color: var(--ink-2); }
+.hub-card .row { margin-top: var(--s3); }
+.hub-next { color: var(--ink-3); font-size: 13.5px; margin-top: var(--s5); }
+</style>
+</head>
+<body>
+<header class="site-header"><div class="hwrap"><a class="brand" href="index.html" aria-label="Azure exams home"><span class="brand-pill"><span class="brand-l">Azure</span><span class="brand-r">Exams</span></span></a><div class="hnav"><nav aria-label="Main"><a href="https://github.com/steeb-k/steeb-k.github.io/tree/main/azure" target="_blank" rel="noopener" class="ext-link" aria-label="GitHub (opens in a new tab)">GitHub<svg class="ext" viewBox="0 0 16 16" width="12" height="12" aria-hidden="true" focusable="false"><path d="M6.5 3.5H3.5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V9.5M9.5 2.5h4v4M13.5 2.5 7.5 8.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a></nav></div></div></header>
+<main>
+<h1>Azure exam study kits</h1>
+<p class="hub-lede">A study guide and a set of practice tests for each exam. Everything runs in the browser; scores and highlights stay on this device.</p>
+<div class="grid">
+  <section class="card accent hub-card" aria-labelledby="az900">
+    <span class="code">AZ-900</span>
+    <h2 id="az900">Azure Fundamentals</h2>
+    <p class="muted">Cloud concepts, Azure architecture and services, management and governance. 45 minutes, pass line 700.</p>
+    <div class="row"><a class="btn primary" href="az-900/index.html">Practice</a><a class="btn" href="az-900/guide/index.html">Study guide</a></div>
+  </section>
+</div>
+<p class="hub-next">More exams will be listed here as they are added.</p>
+</main>
+</body>
+</html>
